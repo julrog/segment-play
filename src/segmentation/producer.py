@@ -71,6 +71,7 @@ def produce_segmentation(
                 pad_box /= down_scale
 
             landmarks = None
+            point_mode = None
 
             if data.has(PoseData):
                 bodypart = None

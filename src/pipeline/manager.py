@@ -20,15 +20,21 @@ class FrameProcessingPipeline:
         fast: bool = True,
         camera_settings: Optional[CameraSettings] = None,
         frame_pool: Optional[FramePool] = None,
-        specific_bodypart: Optional[Synchronized] = None
+        specific_bodypart: Optional[Synchronized] = None,
+        use_pose: bool = False
     ) -> None:
+        self.use_pose = use_pose
+
         self.frame_queue: Queue[DataCollection] = Queue()
         self.tracking_queue: Queue[DataCollection] = Queue()
-        self.pose_queue: Queue[DataCollection] = Queue()  # optional
+        queue_for_segmentation: Queue[DataCollection] = self.tracking_queue
+        if self.use_pose:
+            self.pose_queue: Queue[DataCollection] = Queue()
+            queue_for_segmentation = self.pose_queue
         self.segment_queue: Queue[DataCollection] = Queue()
         self.segments: List[SegmentProducer] = [
             SegmentProducer(
-                self.pose_queue,  # tracking queue
+                queue_for_segmentation,
                 self.segment_queue,
                 down_scale,
                 fast,
@@ -37,8 +43,9 @@ class FrameProcessingPipeline:
             )
             for _ in range(segment_processes)
         ]
-        self.pose: PoseProducer = PoseProducer(
-            self.tracking_queue, self.pose_queue, frame_pool=frame_pool)  # optional
+        if self.use_pose:
+            self.pose: PoseProducer = PoseProducer(
+                self.tracking_queue, self.pose_queue, frame_pool=frame_pool)
         self.tracker: TrackProducer = TrackProducer(
             self.frame_queue, self.tracking_queue, down_scale, frame_pool)
         self.cap = VideoCaptureProducer(
@@ -47,7 +54,8 @@ class FrameProcessingPipeline:
     def start(self) -> None:
         self.cap.start()
         self.tracker.start()
-        self.pose.start()  # optional
+        if self.use_pose:
+            self.pose.start()
         for segment in self.segments:
             segment.start()
 
@@ -61,6 +69,7 @@ class FrameProcessingPipeline:
     def stop(self) -> None:
         self.cap.stop()
         self.tracker.stop()
-        self.pose.stop()  # optional
+        if self.use_pose:
+            self.pose.stop()
         for segment in self.segments:
             segment.stop()

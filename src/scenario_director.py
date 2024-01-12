@@ -34,15 +34,17 @@ def parse_args() -> Dict:
     parser = argparse.ArgumentParser(
         'Demo controllable via keys to control various effects.')
     parser.add_argument('--fullscreen', dest='fullscreen', default=False,
-                        action='store_true', help='Show result in fullscreen mode.')
-    parser.add_argument('--slow', dest='slow', default=False,
-                        action='store_true', help='Using faster SAM model.')
+                        action='store_true', help='Show result in fullscreen mode.')  # noqa: E501
+    parser.add_argument('--fast', dest='fast', default=False,
+                        action='store_true', help='Using faster Mobile-SAM model.')  # noqa: E501
     parser.add_argument('--down-scale', type=float,
                         default=1.0, help='Downscale rate')
     parser.add_argument('--segment-processes', type=int, default=2,
                         help='Number of processes for segmentation.')
     parser.add_argument('--save', dest='save', default=False,
                         action='store_true', help='Save images for every processed frame, with original image.')  # noqa: E501
+    parser.add_argument('--pose', dest='save', default=False,
+                        action='store_true', help='Use pose estimation in the pipeline.')  # noqa: E501
     parser = add_camera_parameters(parser)
 
     return vars(parser.parse_args())
@@ -62,8 +64,10 @@ class Director:
             down_scale: Optional[float] = None,
             camera_settings: Optional[CameraSettings] = None,
             frame_pool: Optional[FramePool] = None,
-            fullscreen: bool = False
+            fullscreen: bool = False,
+            use_pose: bool = False
     ) -> None:
+        self.use_pose: bool = use_pose
         self.bodypart_segmentation: Synchronized[int] = Value(
             'i', BodyPartSegmentation.ALL.value)  # type: ignore
         self.stats: TrackFrameStats = TrackFrameStats(frame_pool)
@@ -76,10 +80,12 @@ class Director:
             fast,
             camera_settings,
             frame_pool,
-            self.bodypart_segmentation
+            self.bodypart_segmentation,
+            self.use_pose
         )
         self.frame_pool = frame_pool
-        self.pose_renderer = PoseRenderer()
+        if self.use_pose:
+            self.pose_renderer = PoseRenderer()
 
         if fullscreen:
             cv2.namedWindow('application', cv2.WINDOW_NORMAL)
@@ -219,7 +225,7 @@ class Director:
                         (box[1], x_pos)
                     )
 
-        if self.settings.show_poses:
+        if self.use_pose and self.settings.show_poses:
             if data.has(PoseData):
                 pose_data = data.get(PoseData)
                 for id in range(len(tracking_data.targets)):
@@ -323,11 +329,12 @@ def main(args: Dict) -> None:
     director = Director(
         settings,
         args.get('segment_processes', 2),
-        not args.get('slow', False),
+        args.get('fast', False),
         args.get('down_scale', False),
         camera_settings,
         frame_pool,
-        args.get('fullscreen', False)
+        args.get('fullscreen', False),
+        args.get('pose', False),
     )
 
     try:
