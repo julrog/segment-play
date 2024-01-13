@@ -36,8 +36,7 @@ class FramePool:
             del d['queue_manager']
         if 'memory_manager' in d:
             del d['memory_manager']
-        if 'frame_pool' in d:
-            del d['frame_pool']
+        del d['frame_pool']
         return d
 
     def __setstate__(self, d: Dict) -> None:
@@ -82,7 +81,7 @@ def create_frame_pool(
 
     while True:
         ret, frame = cap.read()
-        if ret:
+        if ret:  # pragma: no cover
             frame_pool = FramePool(frame, maxsize)
             cap.release()
             return frame_pool

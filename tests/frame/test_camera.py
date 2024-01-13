@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 from typing import List, Tuple
 
 import pytest
+from conftest import requires_env
 from cv2 import VideoCapture
 
 from frame.camera import (add_camera_parameters, check_camera,
@@ -43,6 +44,7 @@ def test_arguments_and_parsing(
 
 
 @pytest.mark.parametrize('arguments_pass_match', [([], True), (['--cam-width', '2000'], False)])
+@requires_env('slow')
 def test_cam_check(arguments_pass_match: Tuple[List[str], bool]) -> None:
     arguments, passing = arguments_pass_match
     parser = ArgumentParser()
