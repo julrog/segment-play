@@ -3,7 +3,8 @@ from typing import Tuple
 import numpy as np
 import pytest
 
-from util.image import clip_section, create_black_image, scale_image
+from util.image import (clip_section, clip_section_xyxy, create_black_image,
+                        scale_image)
 
 
 @pytest.mark.parametrize('shape', [(20, 10), (10, 10, 3)])
@@ -35,3 +36,19 @@ def test_clip_section(
     box, image_size, expected_box = data
     black_image = create_black_image((image_size[1], image_size[0], 3))
     assert clip_section(*box, black_image) == expected_box
+
+
+@pytest.mark.parametrize('data', [
+    ((-5, -5, 110, 110), (100, 100), (0, 0, 100, 100)),
+    ((-5, -5, 95, 95), (100, 100), (0, 0, 95, 95)),
+    ((15, 15, 105, 105), (100, 100), (15, 15, 100, 100)),
+    ((-5, 15, 110, 70), (100, 100), (0, 15, 100, 70)),
+    ((15, 15, 105, 105), (200, 200), (15, 15, 105, 105))
+])
+def test_clip_section_xyxy(
+    data: Tuple[Tuple[int, int, int, int],
+                Tuple[int, int], Tuple[int, int, int, int]]
+) -> None:
+    box, image_size, expected_box = data
+    black_image = create_black_image((image_size[1], image_size[0], 3))
+    assert clip_section_xyxy(*box, black_image) == expected_box

@@ -1,13 +1,9 @@
 import os
-import queue
-import threading
 from argparse import ArgumentParser
 from dataclasses import dataclass
-from queue import Queue as BasicQueue
 from typing import Any, Dict, Optional
 
 import cv2
-import numpy as np
 
 
 @dataclass
@@ -73,32 +69,3 @@ def set_camera_parameters(
     capture.set(cv2.CAP_PROP_FPS, settings.fps)
     capture.set(cv2.CAP_PROP_FOURCC,
                 cv2.VideoWriter.fourcc(*(settings.codec)))
-
-
-class VideoCapture:
-    def __init__(self, settings: Optional[CameraSettings] = None) -> None:
-        if settings:
-            self.cap = cv2.VideoCapture(settings.input, settings.api)
-            set_camera_parameters(self.cap, settings)
-            check_camera(self.cap, settings)
-        else:
-            self.cap = cv2.VideoCapture(0)
-        self.frame_queue: BasicQueue = BasicQueue()
-        t = threading.Thread(target=self._reader)
-        t.daemon = True
-        t.start()
-
-    def _reader(self) -> None:
-        while True:
-            ret, frame = self.cap.read()
-            if not ret:
-                break
-            if not self.frame_queue.empty():
-                try:
-                    self.frame_queue.get_nowait()
-                except queue.Empty:
-                    pass
-            self.frame_queue.put(frame)
-
-    def read(self) -> np.ndarray:
-        return self.frame_queue.get()
