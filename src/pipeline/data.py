@@ -9,8 +9,7 @@ MISSING_DATA_MESSAGE = 'Missing data in pipeline package!'
 
 
 class BaseData:
-    def __init__(self) -> None:
-        pass
+    pass
 
 
 T = TypeVar('T')
@@ -19,10 +18,10 @@ T = TypeVar('T')
 class DataCollection:
     def __init__(
         self,
-        data: Dict[type, BaseData] = {},
+        data: Optional[Dict[type, BaseData]] = None,
         timestamp: Optional[float] = None
     ) -> None:
-        self.data = data
+        self.data = data if data is not None else {}
         if timestamp:
             self.timestamp = timestamp
         else:
@@ -58,22 +57,19 @@ def pipeline_data_generator(
     output_queue: Queue[DataCollection],
     expected_data: List[Type]
 ) -> Generator[DataCollection, None, None]:
-    closing = False
     try:
-        while not closing:
+        while True:
             try:
                 data = input_queue.get(timeout=0.01)
                 if data.is_closed():
-                    closing = True
                     output_queue.put(data)
                     break
-
                 assert all(data.has(ed)
                            for ed in expected_data), MISSING_DATA_MESSAGE
                 yield data
             except queue.Empty:
                 pass
-    except KeyboardInterrupt:
+    except KeyboardInterrupt:  # pragma: no cover
         pass
     except Exception as e:
         output_queue.put(DataCollection().add(ExceptionCloseData(e)))
