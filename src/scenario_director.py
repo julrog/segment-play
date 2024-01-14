@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 
 from background import Background
-from frame.camera import (CameraSettings, add_camera_parameters,
+from frame.camera import (CaptureSettings, add_camera_parameters,
                           parse_camera_settings)
 from frame.producer import FrameData
 from frame.shared import FramePool, create_frame_pool
@@ -62,7 +62,7 @@ class Director:
             segment_processes: int = 2,
             fast: bool = True,
             down_scale: Optional[float] = None,
-            camera_settings: Optional[CameraSettings] = None,
+            camera_settings: Optional[CaptureSettings] = None,
             frame_pool: Optional[FramePool] = None,
             fullscreen: bool = False,
             use_pose: bool = False

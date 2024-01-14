@@ -8,7 +8,7 @@ from typing import Optional, Union
 import cv2
 import numpy as np
 
-from frame.camera import CameraSettings, check_camera, set_camera_parameters
+from frame.camera import CaptureSettings, check_camera, set_camera_parameters
 from frame.shared import FramePool
 from pipeline.data import BaseData, DataCollection
 from pipeline.producer import interruptible
@@ -37,16 +37,19 @@ class FrameData(BaseData):
 
 def produce_capture(
         output_queue: Queue[DataCollection],
-        settings: Optional[CameraSettings],
+        settings: Optional[CaptureSettings],
         stop_condition: Synchronized,
-        frame_pool: Optional[FramePool] = None
+        frame_pool: Optional[FramePool] = None,
 ) -> None:
     if settings:
-        cap = cv2.VideoCapture(settings.input, settings.api)
-        set_camera_parameters(cap, settings)
-        check_camera(cap, settings)
+        if isinstance(settings.input, int):
+            cap = cv2.VideoCapture(settings.input, settings.api)
+            set_camera_parameters(cap, settings)
+            check_camera(cap, settings)
+        else:
+            cap = cv2.VideoCapture(settings.input)
     else:
-        cap = cv2.VideoCapture(0, CameraSettings().api)
+        cap = cv2.VideoCapture(0, CaptureSettings().api)
     print('Camera-FPS: ', int(cap.get(cv2.CAP_PROP_FPS)))
 
     while True:
@@ -62,13 +65,15 @@ def produce_capture(
             except queue.Empty:
                 pass
         output_queue.put(DataCollection().add(FrameData(frame, frame_pool)))
+    output_queue.cancel_join_thread()
+    cap.release()
 
 
 class VideoCaptureProducer:
     def __init__(
         self,
         frame_queue: Queue[DataCollection],
-        settings: Optional[CameraSettings] = None,
+        settings: Optional[CaptureSettings] = None,
         frame_pool: Optional[FramePool] = None
     ) -> None:
         self.settings = settings

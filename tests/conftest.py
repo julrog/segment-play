@@ -6,6 +6,8 @@ from typing import Callable
 import pytest
 from dotenv import load_dotenv
 
+from frame.camera import CaptureSettings
+
 load_dotenv()
 
 
@@ -21,6 +23,13 @@ def pytest_sessionfinish(session: pytest.Session) -> None:
 @pytest.fixture
 def sample_file_2_path() -> str:
     return 'tests/resources/sample_file_2.txt'
+
+
+@pytest.fixture
+def sample_capture_settings() -> CaptureSettings:
+    return CaptureSettings(
+        input=os.path.join('tests', 'resources', 'sample_video.mp4'),
+        width=1280, height=720)
 
 
 def requires_env(*envs: str) -> Callable:

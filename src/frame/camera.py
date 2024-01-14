@@ -1,14 +1,14 @@
 import os
 from argparse import ArgumentParser
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import cv2
 
 
 @dataclass
-class CameraSettings:
-    input: int = 0
+class CaptureSettings:
+    input: Union[int, str] = 0
     width: int = 1920
     height: int = 1080
     fps: int = 30
@@ -38,8 +38,8 @@ def get_codec(cv2_codec_info: float) -> str:
     return codec_str
 
 
-def parse_camera_settings(args: Dict[str, Any]) -> CameraSettings:
-    return CameraSettings(
+def parse_camera_settings(args: Dict[str, Any]) -> CaptureSettings:
+    return CaptureSettings(
         args['cam_input'],
         args['cam_width'],
         args['cam_height'],
@@ -47,7 +47,7 @@ def parse_camera_settings(args: Dict[str, Any]) -> CameraSettings:
         args['cam_codec'])
 
 
-def check_camera(capture: cv2.VideoCapture, settings: CameraSettings) -> None:
+def check_camera(capture: cv2.VideoCapture, settings: CaptureSettings) -> None:
     assert capture.get(cv2.CAP_PROP_FRAME_WIDTH) == settings.width, \
         'Camera setting width could not be set properly'
     assert capture.get(cv2.CAP_PROP_FRAME_HEIGHT) == settings.height, \
@@ -62,7 +62,7 @@ def check_camera(capture: cv2.VideoCapture, settings: CameraSettings) -> None:
 
 def set_camera_parameters(
     capture: cv2.VideoCapture,
-    settings: CameraSettings
+    settings: CaptureSettings
 ) -> None:
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, settings.width)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, settings.height)

@@ -3,7 +3,7 @@ from multiprocessing import Queue
 from multiprocessing.sharedctypes import Synchronized
 from typing import Generator, List, Optional
 
-from frame.camera import CameraSettings
+from frame.camera import CaptureSettings
 from frame.producer import VideoCaptureProducer
 from frame.shared import FramePool
 from pipeline.data import DataCollection
@@ -18,7 +18,7 @@ class FrameProcessingPipeline:
         segment_processes: int = 2,
         down_scale: Optional[float] = None,
         fast: bool = True,
-        camera_settings: Optional[CameraSettings] = None,
+        camera_settings: Optional[CaptureSettings] = None,
         frame_pool: Optional[FramePool] = None,
         specific_bodypart: Optional[Synchronized] = None,
         use_pose: bool = False

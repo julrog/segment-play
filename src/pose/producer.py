@@ -111,6 +111,8 @@ def produce_pose(
         if reduce_frame_discard_timer > 0.015:
             time.sleep(reduce_frame_discard_timer)
     pose.close()
+    input_queue.cancel_join_thread()
+    output_queue.cancel_join_thread()
 
 
 class PoseProducer:

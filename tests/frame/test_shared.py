@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from conftest import requires_env
 
-from frame.camera import CameraSettings
+from frame.camera import CaptureSettings
 from frame.shared import FramePool, create_frame_pool
 
 
@@ -71,13 +71,13 @@ def test_pool_multi() -> None:
 @requires_env('slow')
 def test_frame_pool_from_camera() -> None:
     pool = create_frame_pool(2)
-    default_cam_settings = CameraSettings()
+    default_cam_settings = CaptureSettings()
     assert pool.byte_count > 0
     assert pool.frame_pool[0].shape == (
         default_cam_settings.height, default_cam_settings.width, 3)
     pool.close()
 
-    cam_settings = CameraSettings(width=1280, height=720)
+    cam_settings = CaptureSettings(width=1280, height=720)
     pool = create_frame_pool(2, cam_settings)
     assert pool.byte_count > 0
     assert pool.frame_pool[0].shape == (

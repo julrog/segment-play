@@ -71,6 +71,8 @@ def produce_tracking(
                   (timer.average_time + reduce_frame_discard_timer))
         if reduce_frame_discard_timer > 0.015:
             time.sleep(reduce_frame_discard_timer)
+    input_queue.cancel_join_thread()
+    output_queue.cancel_join_thread()
 
 
 class TrackProducer:

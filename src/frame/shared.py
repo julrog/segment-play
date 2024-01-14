@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Union
 import cv2
 import numpy as np
 
-from frame.camera import CameraSettings, set_camera_parameters
+from frame.camera import CaptureSettings, set_camera_parameters
 
 
 class FramePool:
@@ -72,12 +72,15 @@ class FramePool:
 
 def create_frame_pool(
     maxsize: int,
-    settings: Optional[CameraSettings] = None
+    settings: Optional[CaptureSettings] = None
 ) -> FramePool:
     if not settings:
-        settings = CameraSettings()
-    cap = cv2.VideoCapture(settings.input, settings.api)
-    set_camera_parameters(cap, settings)
+        settings = CaptureSettings()
+    if isinstance(settings.input, int):
+        cap = cv2.VideoCapture(settings.input, settings.api)
+        set_camera_parameters(cap, settings)
+    else:
+        cap = cv2.VideoCapture(settings.input)
 
     while True:
         ret, frame = cap.read()
