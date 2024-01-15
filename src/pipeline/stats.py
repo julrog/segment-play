@@ -8,11 +8,15 @@ from pipeline.data import DataCollection
 
 
 class TrackFrameStats:
-    def __init__(self, frame_pool: Optional[FramePool] = None) -> None:
+    def __init__(
+        self,
+        frame_pool: Optional[FramePool] = None,
+        history: int = 100
+    ) -> None:
         self.frame_pool = frame_pool
-        self.delay = np.array([-1.0 for _ in range(100)], dtype=float)
+        self.delay = np.array([-1.0 for _ in range(history)], dtype=float)
         self.processing_frames = np.array(
-            [-1 for _ in range(100)], dtype=int)
+            [-1 for _ in range(history)], dtype=int)
         self.pointer = 0
         self.count = 0
 
@@ -31,5 +35,8 @@ class TrackFrameStats:
 
     def get_processing_frames(self) -> int:
         assert self.frame_pool is not None
-        return 30 - np.average(
-            self.processing_frames[self.processing_frames > -1])
+        filtered_frames = self.processing_frames[self.processing_frames > -1]
+        if len(filtered_frames) > 0:
+            return self.frame_pool.maxsize - np.average(filtered_frames)
+        else:
+            return 0

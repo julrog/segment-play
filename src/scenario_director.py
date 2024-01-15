@@ -29,6 +29,8 @@ from util.mask import (add_masks, apply_mask, apply_mask_grayscale, dilate,
                        scale_mask)
 from util.visualize import show_box
 
+FRAME_POOL_SIZE = 30
+
 
 def parse_args() -> Dict:
     parser = argparse.ArgumentParser(
@@ -324,7 +326,7 @@ def main(args: Dict) -> None:
     settings.print()
     settings.save_imgs = args.get('save', False)
     camera_settings = parse_camera_settings(args)
-    frame_pool = create_frame_pool(30, camera_settings)
+    frame_pool = create_frame_pool(FRAME_POOL_SIZE, camera_settings)
 
     director = Director(
         settings,

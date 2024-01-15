@@ -14,6 +14,10 @@ class TestData(BaseData):
         self.value = value
 
 
+class TestException(Exception):
+    message = 'Test'
+
+
 def test_data_collection() -> None:
     current_time = time.time()
     data = DataCollection(timestamp=current_time)
@@ -42,9 +46,6 @@ def test_close_data() -> None:
 
 
 def test_exception_data() -> None:
-    class TestException(Exception):
-        message = 'Test'
-
     data = DataCollection()
     assert not data.is_closed()
     data.add(ExceptionCloseData(TestException()))

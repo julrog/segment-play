@@ -11,6 +11,7 @@ from frame.camera import CaptureSettings, set_camera_parameters
 
 class FramePool:
     def __init__(self, template: np.ndarray, maxsize: int) -> None:
+        self.maxsize = maxsize
         self.dtype = template.dtype
         self.shape = template.shape
         self.byte_count = template.nbytes

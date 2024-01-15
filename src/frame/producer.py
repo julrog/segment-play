@@ -62,7 +62,7 @@ def produce_capture(
                 discarded_frame = output_queue.get_nowait()
                 if frame_pool and discarded_frame.has(FrameData):
                     frame_pool.free_frame(discarded_frame.get(FrameData).frame)
-            except queue.Empty:
+            except queue.Empty:  # pragma_ no cover
                 pass
         output_queue.put(DataCollection().add(FrameData(frame, frame_pool)))
     output_queue.cancel_join_thread()

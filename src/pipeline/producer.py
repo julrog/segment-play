@@ -15,7 +15,7 @@ def interruptible(
     assert output_queue is not None
     try:
         fn(output_queue, *args, **kwargs)
-    except KeyboardInterrupt:
+    except KeyboardInterrupt:  # pragma: no cover
         pass
     except Exception as e:
         output_queue.put(DataCollection().add(ExceptionCloseData(e)))
