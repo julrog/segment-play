@@ -8,13 +8,13 @@ from pipeline.data import (MISSING_DATA_MESSAGE, BaseData, CloseData,
                            pipeline_data_generator)
 
 
-class TestData(BaseData):
+class TData(BaseData):
     def __init__(self, value: int) -> None:
         super().__init__()
         self.value = value
 
 
-class TestException(Exception):
+class TException(Exception):
     message = 'Test'
 
 
@@ -31,11 +31,11 @@ def test_data_collection() -> None:
     data.add(base_data)
     assert data.has(BaseData)
 
-    assert not data.has(TestData)
-    test_data = TestData(1)
+    assert not data.has(TData)
+    test_data = TData(1)
     data.add(test_data)
-    assert data.has(TestData)
-    assert data.get(TestData).value == 1
+    assert data.has(TData)
+    assert data.get(TData).value == 1
 
 
 def test_close_data() -> None:
@@ -48,7 +48,7 @@ def test_close_data() -> None:
 def test_exception_data() -> None:
     data = DataCollection()
     assert not data.is_closed()
-    data.add(ExceptionCloseData(TestException()))
+    data.add(ExceptionCloseData(TException()))
     assert data.is_closed()
 
     assert data.get(ExceptionCloseData).exception.message == 'Test'
@@ -56,7 +56,7 @@ def test_exception_data() -> None:
 
 def fill_queue(input_queue: Queue[DataCollection], count: int, missing: bool) -> None:
     for i in range(count):
-        input_queue.put(DataCollection().add(TestData(i + 1)))
+        input_queue.put(DataCollection().add(TData(i + 1)))
     if missing:
         input_queue.put(DataCollection())
     input_queue.put(DataCollection().add(CloseData()))
@@ -70,10 +70,10 @@ def test_pipeline_data_generator() -> None:
     fill_process.start()
 
     count = 1
-    for data in pipeline_data_generator(input_queue, output_queue, [TestData]):
+    for data in pipeline_data_generator(input_queue, output_queue, [TData]):
         if count < 4:
             assert not data.is_closed()
-            assert data.get(TestData).value == count
+            assert data.get(TData).value == count
         else:
             assert data.is_closed()
         count += 1
@@ -90,10 +90,10 @@ def test_pipeline_data_generator_exception() -> None:
     fill_process.start()
 
     count = 1
-    for data in pipeline_data_generator(input_queue, output_queue, [TestData]):
+    for data in pipeline_data_generator(input_queue, output_queue, [TData]):
         if count < 3:
             assert not data.is_closed()
-            assert data.get(TestData).value == count
+            assert data.get(TData).value == count
         elif count == 3:
             assert not data.is_closed()
         else:

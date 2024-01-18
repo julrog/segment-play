@@ -13,7 +13,7 @@ from util.image import clip_section
 class TrackObject:
     appearance_count: int = 0
     last_appearance: List[int] = field(
-        default_factory=lambda: [0, 0, 0, 0, 0])
+        default_factory=lambda: [0, 0, 0, 0, 0, 0, 0, 0, 0])
     last_frame: int = 0
 
 
@@ -25,6 +25,7 @@ class Tracker:
         self.nms_thr = 0.7
         self.score_thr = 0.1
         self.min_box_area = 10
+        self.max_narrowness = 1.6
         self.ocsort = OCSort(det_thresh=0.6, iou_threshold=0.3)
         self.current_targets: List[List[int]] = []
         self.track_objects: Dict[int, TrackObject] = {}
@@ -42,7 +43,6 @@ class Tracker:
         img_info['raw_img'] = image
 
         img, ratio = preprocess(image, self.input_shape, mean=None, std=None)
-        img_info['ratio'] = ratio
         ort_inputs = {self.session.get_inputs()[0].name: img[None, :, :, :]}
 
         output = self.session.run(None, ort_inputs)
@@ -99,8 +99,8 @@ class Tracker:
             tlhw = [int(target[0]), int(target[1]), int(target[2]) -
                     int(target[0]), int(target[3]) - int(target[1])]
             tid = int(target[4])
-            vertical = tlhw[2] / tlhw[3] > 1.6
-            if tlhw[2] * tlhw[3] > self.min_box_area and not vertical:
+            too_narrow = tlhw[2] / tlhw[3] > self.max_narrowness
+            if tlhw[2] * tlhw[3] > self.min_box_area and not too_narrow:
                 current_ids.append(tid)
                 if tid in self.track_objects.keys():
                     self.track_objects[tid].appearance_count += 1

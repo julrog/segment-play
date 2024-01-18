@@ -3,6 +3,7 @@ omit =
     */__init__.py
     */tests/*
     *conftest*
+    */ocsort/*
 relative_files = True
 [report]
 exclude_lines =

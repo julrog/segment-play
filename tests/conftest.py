@@ -1,8 +1,11 @@
 import glob
 import os
 import shutil
-from typing import Callable
+from collections.abc import Callable
+from typing import Generator
 
+import cv2
+import numpy as np
 import pytest
 from dotenv import load_dotenv
 
@@ -30,6 +33,23 @@ def sample_capture_settings() -> CaptureSettings:
     return CaptureSettings(
         input=os.path.join('tests', 'resources', 'sample_video.mp4'),
         width=1280, height=720)
+
+
+@pytest.fixture
+def sample_video_frame_gen() -> Callable[[], Generator[np.ndarray, None, None]]:
+    def generator() -> Generator[np.ndarray, None, None]:
+        cap = cv2.VideoCapture(os.path.join(
+            'tests', 'resources', 'sample_video.mp4'))
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                yield frame
+        except GeneratorExit:
+            cap.release()
+
+    return generator
 
 
 def requires_env(*envs: str) -> Callable:

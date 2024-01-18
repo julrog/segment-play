@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from multiprocessing import Queue
-from typing import Any, Callable
+from typing import Any
 
 from pipeline.data import DataCollection, ExceptionCloseData
 
