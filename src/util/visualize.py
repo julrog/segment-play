@@ -3,6 +3,7 @@ from typing import Optional
 import cv2
 import numpy as np
 
+DEFAULT_COLOR = 2
 COLORS = [
     (47, 79, 79),
     (165, 42, 42),
@@ -34,7 +35,7 @@ def show_box(
 ) -> np.ndarray:
     x0, y0 = int(box[0]), int(box[1])
     x1, y1 = int(box[2]), int(box[3])
-    color = COLORS[2]
+    color = COLORS[DEFAULT_COLOR]
     if id is not None:
         color = COLORS[id % 20]
     return cv2.rectangle(image, (x0, y0), (x1, y1), color, 2)
