@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import queue
 import time
 from multiprocessing import Process, Queue
 from typing import List, Optional
 
 import numpy as np
 
-from frame.producer import FrameData
+from frame.producer import FrameData, free_output_queue
 from frame.shared import FramePool
 from ocsort.timer import Timer
 from pipeline.data import (BaseData, CloseData, DataCollection,
@@ -30,7 +29,7 @@ class TrackingData(BaseData):
         return self.targets[id][5:].copy()
 
     def get_tracking_id(self, id: int) -> int:
-        return int(self.targets[id][4].copy())
+        return int(self.targets[id][4])
 
 
 def produce_tracking(
@@ -50,18 +49,8 @@ def produce_tracking(
         timer.tic()
         frame = data.get(FrameData).get_frame(frame_pool)
         tracker.update(frame)
-        if not output_queue.empty():
-            try:
-                # discard previous (unprocessed) frame
-                discarded_frame = output_queue.get_nowait()
-                if frame_pool and discarded_frame.has(FrameData):
-                    frame_pool.free_frame(
-                        discarded_frame.get(FrameData).frame)
-                reduce_frame_discard_timer += 0.015
-            except queue.Empty:
-                reduce_frame_discard_timer -= 0.001
-                if reduce_frame_discard_timer < 0:
-                    reduce_frame_discard_timer = 0
+        reduce_frame_discard_timer = free_output_queue(
+            output_queue, frame_pool, reduce_frame_discard_timer)
         output_queue.put(data.add(TrackingData(tracker.get_all_targets())))
         timer.toc()
         if tracker.current_frame == 100:
@@ -71,8 +60,10 @@ def produce_tracking(
                   (timer.average_time + reduce_frame_discard_timer))
         if reduce_frame_discard_timer > 0.015:
             time.sleep(reduce_frame_discard_timer)
-    input_queue.cancel_join_thread()
+    free_output_queue(output_queue, frame_pool)
+    output_queue.put(DataCollection().add(CloseData()))
     output_queue.cancel_join_thread()
+    input_queue.cancel_join_thread()
 
 
 class TrackProducer:

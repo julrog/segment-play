@@ -68,6 +68,7 @@ def test_pool_multi() -> None:
     pool.close()
 
 
+# TODO: not use camera for this
 @requires_env('slow')
 def test_frame_pool_from_camera() -> None:
     pool = create_frame_pool(2)
@@ -82,3 +83,4 @@ def test_frame_pool_from_camera() -> None:
     assert pool.byte_count > 0
     assert pool.frame_pool[0].shape == (
         cam_settings.height, cam_settings.width, 3)
+    pool.close()

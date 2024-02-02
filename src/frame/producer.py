@@ -10,7 +10,7 @@ import numpy as np
 
 from frame.camera import CaptureSettings, check_camera, set_camera_parameters
 from frame.shared import FramePool
-from pipeline.data import BaseData, DataCollection
+from pipeline.data import BaseData, CloseData, DataCollection
 from pipeline.producer import interruptible
 
 
@@ -35,6 +35,28 @@ class FrameData(BaseData):
             return self.frame
 
 
+def free_output_queue(
+        output_queue: Queue[DataCollection],
+        frame_pool: Optional[FramePool] = None,
+        reduce_frame_discard_timer: Optional[float] = None
+) -> Optional[float]:
+    if not output_queue.empty():
+        try:
+            discarded_frame = output_queue.get(timeout=0.01)
+            if frame_pool and discarded_frame.has(FrameData):
+                frame_pool.free_frame(discarded_frame.get(FrameData).frame)
+            if reduce_frame_discard_timer is not None:
+                reduce_frame_discard_timer += 0.015
+        except queue.Empty:  # pragma: no cover
+            pass
+    else:
+        if reduce_frame_discard_timer is not None:
+            reduce_frame_discard_timer -= 0.001
+            if reduce_frame_discard_timer < 0.0:
+                reduce_frame_discard_timer = 0.0
+    return reduce_frame_discard_timer
+
+
 def produce_capture(
         output_queue: Queue[DataCollection],
         settings: Optional[CaptureSettings],
@@ -53,18 +75,20 @@ def produce_capture(
     print('Camera-FPS: ', int(cap.get(cv2.CAP_PROP_FPS)))
 
     while True:
-        ret, frame = cap.read()
-        if not ret or stop_condition.value:
+        # grab first, otherwise the process might close unexpected with read
+        ret = cap.grab()
+        if not ret or stop_condition.value:  # pragma: no cover
+            break
+        ret, frame = cap.retrieve()
+        if not ret or stop_condition.value:  # pragma: no cover
             break
         frame.flags.writeable = False
-        if not output_queue.empty():
-            try:
-                discarded_frame = output_queue.get_nowait()
-                if frame_pool and discarded_frame.has(FrameData):
-                    frame_pool.free_frame(discarded_frame.get(FrameData).frame)
-            except queue.Empty:  # pragma_ no cover
-                pass
-        output_queue.put(DataCollection().add(FrameData(frame, frame_pool)))
+        free_output_queue(output_queue, frame_pool)
+        output_queue.put(DataCollection().add(
+            FrameData(frame, frame_pool)))
+
+    free_output_queue(output_queue, frame_pool)
+    output_queue.put(DataCollection().add(CloseData()))
     output_queue.cancel_join_thread()
     cap.release()
 
@@ -95,4 +119,4 @@ class VideoCaptureProducer:
     def stop(self) -> None:
         self.stop_condition.value = 1
         if self.process:
-            self.process.join()
+            self.process.join(1.0)

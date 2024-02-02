@@ -84,7 +84,9 @@ def create_frame_pool(
         cap = cv2.VideoCapture(settings.input)
 
     while True:
-        ret, frame = cap.read()
+        ret = cap.grab()
+        if ret:
+            ret, frame = cap.retrieve()
         if ret:  # pragma: no cover
             frame_pool = FramePool(frame, maxsize)
             cap.release()

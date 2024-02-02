@@ -62,6 +62,7 @@ def pipeline_data_generator(
             try:
                 data = input_queue.get(timeout=0.01)
                 if data.is_closed():
+                    print('closed!')
                     output_queue.put(data)
                     break
                 assert all(data.has(ed)
@@ -73,3 +74,12 @@ def pipeline_data_generator(
         pass
     except Exception as e:
         output_queue.put(DataCollection().add(ExceptionCloseData(e)))
+
+
+def clear_queue(clear_queue: Queue) -> None:
+    try:
+        while True:
+            clear_queue.get_nowait()
+    except queue.Empty:
+        pass
+    clear_queue.close()
