@@ -4,16 +4,21 @@ Segment Play is a tool that shows some possibilities of real-time segmentation i
 
 ## Install
 
-```
-pip install -r requirements.txt
-```
-
 Install pytorch see (https://pytorch.org/get-started/locally/).
 Following version were used in development on Windows 10 & 11:
 
 ```
 pip install torch==2.0.1+cu117 torchvision==0.15.2+cu117 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu117
 ```
+
+Install other python dependencies:
+
+```
+pip install -r requirements.txt
+```
+
+
+
 
 ### Models
 

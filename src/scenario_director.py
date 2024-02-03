@@ -45,7 +45,7 @@ def parse_args() -> Dict:
                         help='Number of processes for segmentation.')
     parser.add_argument('--save', dest='save', default=False,
                         action='store_true', help='Save images for every processed frame, with original image.')  # noqa: E501
-    parser.add_argument('--pose', dest='save', default=False,
+    parser.add_argument('--pose', dest='pose', default=False,
                         action='store_true', help='Use pose estimation in the pipeline.')  # noqa: E501
     parser = add_camera_parameters(parser)
 

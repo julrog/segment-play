@@ -1,9 +1,9 @@
 filterpy==1.4.5
-mediapipe==0.10.8
-mobile-sam @ git+https://github.com/ChaoningZhang/MobileSAM.git@12d80d4
-numpy==1.24.4
-onnxruntime==1.15.1
-opencv-python==4.8.1.78
-scikit-image==0.18.3
+mediapipe==0.10.9
+mobile-sam @ git+https://github.com/ChaoningZhang/MobileSAM.git@c12dd83
+numpy==1.26.3
+onnxruntime==1.17.0
+opencv-python==4.9.0.80
+scikit-image==0.22.0
 segment-anything @ git+https://github.com/facebookresearch/segment-anything.git@6fdee8f
 timm==0.9.10
