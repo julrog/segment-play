@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import queue
 import time
 from multiprocessing import Process, Queue
@@ -106,8 +107,9 @@ def produce_pose(
         if frame == 100:
             timer.clear()
         if frame % 100 == 0 and frame > 100:
-            print('Pose-FPS:', 1. / timer.average_time, 1. /
-                  (timer.average_time + reduce_frame_discard_timer))
+            average_time = 1. / timer.average_time, 1. / \
+                (timer.average_time + reduce_frame_discard_timer)
+            logging.info(f'Pose-FPS: {average_time}')
         if reduce_frame_discard_timer > 0.015:
             time.sleep(reduce_frame_discard_timer)
     pose.close()

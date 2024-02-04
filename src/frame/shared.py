@@ -1,3 +1,4 @@
+import queue
 from multiprocessing import Manager
 from multiprocessing.managers import SharedMemoryManager
 from multiprocessing.shared_memory import SharedMemory
@@ -60,12 +61,21 @@ class FramePool:
     def put(self, frame: Union[np.ndarray, int]) -> int:
         if type(frame) is not np.ndarray:
             return frame
-        index: int = self.free_frames.get()
+        try:
+            index: int = self.free_frames.get_nowait()
+        except queue.Empty:
+            raise ValueError('No free frame slots available')
         self.frame_pool[index][:] = frame[:]
         return index
 
     def get(self, index: int) -> np.ndarray:
         return self.frame_pool[index]
+
+    def is_empty(self) -> bool:
+        return self.free_frames.qsize() == self.maxsize
+
+    def has_free_slots(self) -> bool:
+        return self.free_frames.qsize() > 0
 
     def close(self) -> None:
         self.memory_manager.shutdown()
@@ -75,9 +85,9 @@ def create_frame_pool(
     maxsize: int,
     settings: Optional[CaptureSettings] = None
 ) -> FramePool:
-    if not settings:
+    if not settings:  # pragma: cam-tests
         settings = CaptureSettings()
-    if isinstance(settings.input, int):
+    if isinstance(settings.input, int):  # pragma: cam-tests
         cap = cv2.VideoCapture(settings.input, settings.api)
         set_camera_parameters(cap, settings)
     else:

@@ -64,7 +64,7 @@ class FrameProcessingPipeline:
             try:
                 yield self.segment_queue.get(timeout=0.01)
             except queue.Empty:
-                pass  # print("Consumer:Timeout reading from the track Queue")
+                pass
 
     def stop(self) -> None:
         self.cap.stop()

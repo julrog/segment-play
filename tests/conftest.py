@@ -7,11 +7,13 @@ from typing import Generator
 import cv2
 import numpy as np
 import pytest
+from coverage_conditional_plugin import get_env_info
 from dotenv import load_dotenv
 
 from frame.camera import CaptureSettings
 
 load_dotenv()
+get_env_info()
 
 
 def pytest_sessionfinish(session: pytest.Session) -> None:
@@ -36,7 +38,13 @@ def sample_capture_settings() -> CaptureSettings:
 
 
 @pytest.fixture
-def sample_video_frame_gen() -> Callable[[], Generator[np.ndarray, None, None]]:
+def sample_video_frame_count() -> int:
+    return 382
+
+
+@pytest.fixture
+def sample_video_frame_gen() -> Callable[
+        [], Generator[np.ndarray, None, None]]:
     def generator() -> Generator[np.ndarray, None, None]:
         cap = cv2.VideoCapture(os.path.join(
             'tests', 'resources', 'sample_video.mp4'))

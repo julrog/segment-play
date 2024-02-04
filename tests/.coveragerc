@@ -5,6 +5,13 @@ omit =
     *conftest*
     */ocsort/*
 relative_files = True
+plugins =
+  coverage_conditional_plugin
 [report]
 exclude_lines =
     pragma: no cover
+
+
+[coverage:coverage_conditional_plugin]
+rules =
+  "not os_environ.get('TEST_TYPE') == 'slow'": cam-tests

@@ -55,14 +55,13 @@ class ExceptionCloseData(CloseData):
 def pipeline_data_generator(
     input_queue: Queue[DataCollection],
     output_queue: Queue[DataCollection],
-    expected_data: List[Type]
+    expected_data: List[Type],
 ) -> Generator[DataCollection, None, None]:
     try:
         while True:
             try:
                 data = input_queue.get(timeout=0.01)
                 if data.is_closed():
-                    print('closed!')
                     output_queue.put(data)
                     break
                 assert all(data.has(ed)

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import queue
+import time
 from multiprocessing import Process, Queue, Value
 from multiprocessing.sharedctypes import Synchronized
 from typing import Optional, Union
@@ -10,7 +12,8 @@ import numpy as np
 
 from frame.camera import CaptureSettings, check_camera, set_camera_parameters
 from frame.shared import FramePool
-from pipeline.data import BaseData, CloseData, DataCollection
+from pipeline.data import (BaseData, CloseData, DataCollection,
+                           ExceptionCloseData)
 from pipeline.producer import interruptible
 
 
@@ -62,33 +65,51 @@ def produce_capture(
         settings: Optional[CaptureSettings],
         stop_condition: Synchronized,
         frame_pool: Optional[FramePool] = None,
+        skip_frames: bool = True,
 ) -> None:
     if settings:
-        if isinstance(settings.input, int):
+        if isinstance(settings.input, int):  # pragma: cam-tests
             cap = cv2.VideoCapture(settings.input, settings.api)
             set_camera_parameters(cap, settings)
             check_camera(cap, settings)
         else:
             cap = cv2.VideoCapture(settings.input)
     else:
-        cap = cv2.VideoCapture(0, CaptureSettings().api)
-    print('Camera-FPS: ', int(cap.get(cv2.CAP_PROP_FPS)))
+        cap = cv2.VideoCapture(0, CaptureSettings().api)  # pragma: cam-tests
+    logging.info(f'Camera-FPS: {int(cap.get(cv2.CAP_PROP_FPS))}')
 
-    while True:
-        # grab first, otherwise the process might close unexpected with read
-        ret = cap.grab()
-        if not ret or stop_condition.value:  # pragma: no cover
-            break
-        ret, frame = cap.retrieve()
-        if not ret or stop_condition.value:  # pragma: no cover
-            break
-        frame.flags.writeable = False
-        free_output_queue(output_queue, frame_pool)
+    try:
+        count = 0
+        while True:
+            # grab first, otherwise the process might close unexpected with
+            # read
+            ret = cap.grab()
+            if not ret or stop_condition.value:  # pragma: no cover
+                break
+            ret, frame = cap.retrieve()
+            if not ret or stop_condition.value:  # pragma: no cover
+                break
+            frame.flags.writeable = False
+            if skip_frames:
+                free_output_queue(output_queue, frame_pool)
+            else:
+                # wait until there is space in the queue
+                free_frame_slots = frame_pool is None or \
+                    frame_pool.has_free_slots()
+                while not free_frame_slots:
+                    time.sleep(0.01)
+                    free_frame_slots = frame_pool is None or \
+                        frame_pool.has_free_slots()
+            count += 1
+            output_queue.put(DataCollection().add(
+                FrameData(frame, frame_pool)))
+
+        if skip_frames:
+            free_output_queue(output_queue, frame_pool)
+        output_queue.put(DataCollection().add(CloseData()))
+    except Exception as e:  # pragma: no cover
         output_queue.put(DataCollection().add(
-            FrameData(frame, frame_pool)))
-
-    free_output_queue(output_queue, frame_pool)
-    output_queue.put(DataCollection().add(CloseData()))
+            ExceptionCloseData(e)))
     output_queue.cancel_join_thread()
     cap.release()
 
@@ -98,13 +119,15 @@ class VideoCaptureProducer:
         self,
         frame_queue: Queue[DataCollection],
         settings: Optional[CaptureSettings] = None,
-        frame_pool: Optional[FramePool] = None
+        frame_pool: Optional[FramePool] = None,
+        skip_frames: bool = True
     ) -> None:
         self.settings = settings
         self.frame_queue = frame_queue
         self.process: Optional[Process] = None
         self.stop_condition: Synchronized[int] = Value('i', 0)  # type: ignore
         self.frame_pool = frame_pool
+        self.skip_frames = skip_frames
 
     def start(self) -> None:
         self.process = Process(target=interruptible, args=(
@@ -112,7 +135,8 @@ class VideoCaptureProducer:
             self.frame_queue,
             self.settings,
             self.stop_condition,
-            self.frame_pool
+            self.frame_pool,
+            self.skip_frames
         ))
         self.process.start()
 

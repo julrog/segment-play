@@ -95,9 +95,9 @@ def test_producer(
         2, sample_capture_settings) if use_frame_pool else None
     frame_queue: Queue[DataCollection] = Queue()
 
-    producer = VideoCaptureProducer(
+    frame_producer = VideoCaptureProducer(
         frame_queue, sample_capture_settings, frame_pool)
-    producer.start()
+    frame_producer.start()
 
     data: Optional[DataCollection] = None
     found_frame = False
@@ -112,7 +112,140 @@ def test_producer(
     assert isinstance(data, DataCollection)
     check_frame_data(data, sample_capture_settings, frame_pool)
 
-    producer.stop()
+    frame_producer.stop()
+    clear_queue(frame_queue)
+
+
+@pytest.mark.parametrize('frame_pool_size', [0, 5, 20])
+@pytest.mark.parametrize('max_queue_size', [None, 10])
+def test_producer_no_frame_skips(
+    sample_capture_settings: CaptureSettings,
+    sample_video_frame_count: int,
+    frame_pool_size: int,
+    max_queue_size: Optional[int]
+) -> None:
+    produced_frames = 0
+    expected_frames = sample_video_frame_count
+    frame_pool: Optional[FramePool] = create_frame_pool(
+        frame_pool_size,
+        sample_capture_settings
+    ) if frame_pool_size > 0 else None
+    frame_queue: Queue[DataCollection] = Queue(
+        max_queue_size) if max_queue_size is not None else Queue()
+
+    frame_producer = VideoCaptureProducer(
+        frame_queue, sample_capture_settings, frame_pool, skip_frames=False)
+    frame_producer.start()
+
+    if frame_pool_size == 0:
+        queue_max_condition = max_queue_size
+    else:
+        if max_queue_size is not None:
+            queue_max_condition = min(frame_pool_size, max_queue_size)
+        else:
+            queue_max_condition = frame_pool_size
+
+    if queue_max_condition is not None:
+        while frame_queue.qsize() < queue_max_condition:
+            time.sleep(0.01)
+
+    time.sleep(0.1)
+
+    if queue_max_condition is not None:
+        current_queue_size = frame_queue.qsize()
+        # add a little bit of tolerance to the queue size
+        assert queue_max_condition + 1 >= current_queue_size
+        assert current_queue_size >= queue_max_condition
+
+    while True:
+        try:
+            if queue_max_condition is not None:
+                # add a little bit of tolerance to the queue size
+                assert frame_queue.qsize() <= queue_max_condition + 1
+            data = frame_queue.get(timeout=0.01)
+
+            assert isinstance(data, DataCollection)
+            if produced_frames < expected_frames:
+                assert not data.is_closed()
+                assert data.has(FrameData)
+                if produced_frames % 100 == 0:
+                    check_frame_data(
+                        data, sample_capture_settings, frame_pool)
+                produced_frames += 1
+                if frame_pool is not None:
+                    frame_pool.free_frame(data.get(FrameData).frame)
+            else:
+                assert data.is_closed()
+                break
+        except queue.Empty:
+            pass
+
+    assert produced_frames == expected_frames
+
+    assert frame_queue.empty()
+    time.sleep(0.1)
+    assert frame_queue.empty()
+
+    frame_producer.stop()
+    clear_queue(frame_queue)
+
+
+def test_producer_no_frame_skips_queue_size_limit_on_close(
+    sample_capture_settings: CaptureSettings,
+    sample_video_frame_count: int,
+) -> None:
+    max_queue_size = 10
+    produced_frames = 0
+    expected_frames = sample_video_frame_count
+    frame_pool = create_frame_pool(
+        20,
+        sample_capture_settings
+    )
+
+    frame_queue: Queue[DataCollection] = Queue(max_queue_size)
+
+    frame_producer = VideoCaptureProducer(
+        frame_queue, sample_capture_settings, frame_pool, skip_frames=False)
+    frame_producer.start()
+
+    waited = False
+    while True:
+        try:
+            # add a little bit of tolerance to the queue size
+            assert frame_queue.qsize() <= max_queue_size + 1
+            data = frame_queue.get(timeout=0.01)
+
+            assert isinstance(data, DataCollection)
+            if produced_frames < expected_frames - (max_queue_size + 1):
+                assert not data.is_closed()
+                produced_frames += 1
+                frame_pool.free_frame(data.get(FrameData).frame)
+            elif not waited:
+                # wait with full queue to test producer waiting with close
+                # data until there is some space in the queue
+                time.sleep(0.5)
+                assert max_queue_size == frame_queue.qsize()
+                waited = True
+                produced_frames += 1
+                frame_pool.free_frame(data.get(FrameData).frame)
+            elif produced_frames < expected_frames:
+                assert not data.is_closed()
+                produced_frames += 1
+                frame_pool.free_frame(data.get(FrameData).frame)
+            else:
+                assert data.is_closed()
+                break
+
+        except queue.Empty:
+            pass
+
+    assert produced_frames == expected_frames
+
+    assert frame_queue.empty()
+    time.sleep(0.1)
+    assert frame_queue.empty()
+
+    frame_producer.stop()
     clear_queue(frame_queue)
 
 

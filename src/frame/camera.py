@@ -31,7 +31,7 @@ def add_camera_parameters(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 
-def get_codec(cv2_codec_info: float) -> str:
+def get_codec(cv2_codec_info: float) -> str:  # pragma: cam-tests
     codec = int(cv2_codec_info)
     codec_str = str(chr(codec & 0xff) + chr((codec >> 8) & 0xff) +
                     chr((codec >> 16) & 0xff) + chr((codec >> 24) & 0xff))
@@ -47,7 +47,10 @@ def parse_camera_settings(args: Dict[str, Any]) -> CaptureSettings:
         args['cam_codec'])
 
 
-def check_camera(capture: cv2.VideoCapture, settings: CaptureSettings) -> None:
+def check_camera(
+    capture: cv2.VideoCapture,
+    settings: CaptureSettings
+) -> None:  # pragma: cam-tests
     assert capture.get(cv2.CAP_PROP_FRAME_WIDTH) == settings.width, \
         'Camera setting width could not be set properly'
     assert capture.get(cv2.CAP_PROP_FRAME_HEIGHT) == settings.height, \
@@ -63,7 +66,7 @@ def check_camera(capture: cv2.VideoCapture, settings: CaptureSettings) -> None:
 def set_camera_parameters(
     capture: cv2.VideoCapture,
     settings: CaptureSettings
-) -> None:
+) -> None:  # pragma: cam-tests
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, settings.width)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, settings.height)
     capture.set(cv2.CAP_PROP_FPS, settings.fps)

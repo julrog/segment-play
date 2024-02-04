@@ -43,7 +43,10 @@ def test_arguments_and_parsing(
             assert getattr(cam_settings, name.replace('cam_', '')) == default
 
 
-@pytest.mark.parametrize('arguments_pass_match', [([], True), (['--cam-width', '2000'], False)])
+@pytest.mark.parametrize('arguments_pass_match', [
+    ([], True),
+    (['--cam-width', '2000'], False)
+])
 @requires_env('slow')
 def test_cam_check(arguments_pass_match: Tuple[List[str], bool]) -> None:
     arguments, passing = arguments_pass_match

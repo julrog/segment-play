@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import queue
 import time
 from multiprocessing import Process, Queue
@@ -125,8 +126,10 @@ def produce_segmentation(
                 int(pad_box[0]):int(pad_box[2])
             ]
             if new_mask.shape[0] <= 0 or new_mask.shape[1] <= 0:
-                print('New mask is empty', tracking_data.get_box(
-                    id), tracking_data.get_padded_box(id))
+                box = tracking_data.get_box(id)
+                padded_box = tracking_data.get_padded_box(id)
+                logging.warning(
+                    f'New mask is empty: {box}, {padded_box}')
             all_masks.append([new_mask])
         if not output_queue.empty():
             try:
@@ -146,8 +149,9 @@ def produce_segmentation(
         if frame == 100:
             timer.clear()
         if frame % 100 == 0 and frame > 100:
-            print('Segmentation-FPS:', 1. / timer.average_time, 1. /
-                  (timer.average_time + reduce_frame_discard_timer))
+            average_time = 1. / timer.average_time, 1. / \
+                (timer.average_time + reduce_frame_discard_timer)
+            logging.info(f'Segmentation-FPS: {average_time}',)
         if reduce_frame_discard_timer > 0.015:
             time.sleep(reduce_frame_discard_timer)
     input_queue.cancel_join_thread()
