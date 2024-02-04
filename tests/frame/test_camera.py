@@ -47,7 +47,7 @@ def test_arguments_and_parsing(
     ([], True),
     (['--cam-width', '2000'], False)
 ])
-@requires_env('slow')
+@requires_env('cam_tests')
 def test_cam_check(arguments_pass_match: Tuple[List[str], bool]) -> None:
     arguments, passing = arguments_pass_match
     parser = ArgumentParser()

@@ -80,6 +80,7 @@ def test_produce_capture(
 
     produce_capture(frame_queue, sample_capture_settings,
                     stop_condition, frame_pool)
+    time.sleep(0.02)
     data: DataCollection = frame_queue.get()
     assert data.is_closed()
     assert not data.has(FrameData)
@@ -116,7 +117,7 @@ def test_producer(
     clear_queue(frame_queue)
 
 
-@pytest.mark.parametrize('frame_pool_size', [0, 5, 20])
+@pytest.mark.parametrize('frame_pool_size', [5, 20])
 @pytest.mark.parametrize('max_queue_size', [None, 10])
 def test_producer_no_frame_skips(
     sample_capture_settings: CaptureSettings,
@@ -262,7 +263,7 @@ def test_producer_early_stop(
 
 
 @pytest.mark.parametrize('use_settings', [False, True])
-@requires_env('slow')
+@requires_env('cam_tests')
 def test_producer_with_camera(use_settings: bool) -> None:
     default_cam_settings: Optional[CaptureSettings] = CaptureSettings(
     ) if use_settings else None

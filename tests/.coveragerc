@@ -4,6 +4,8 @@ omit =
     */tests/*
     *conftest*
     */ocsort/*
+    */config-3.py
+    */config.py
 relative_files = True
 plugins =
   coverage_conditional_plugin
@@ -14,4 +16,5 @@ exclude_lines =
 
 [coverage:coverage_conditional_plugin]
 rules =
-  "not os_environ.get('TEST_TYPE') == 'slow'": cam-tests
+  "not os_environ.get('CAM_TESTS') == 'True'": cam-tests
+  "not os_environ.get('AI_TESTS') == 'True'": ai-tests

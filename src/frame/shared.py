@@ -1,5 +1,5 @@
 import queue
-from multiprocessing import Manager
+from multiprocessing import Queue
 from multiprocessing.managers import SharedMemoryManager
 from multiprocessing.shared_memory import SharedMemory
 from typing import Dict, List, Optional, Union
@@ -16,13 +16,12 @@ class FramePool:
         self.dtype = template.dtype
         self.shape = template.shape
         self.byte_count = template.nbytes
-        self.queue_manager = Manager()
+        self.free_frames: Queue[int] = Queue(maxsize)
         self.memory_manager = SharedMemoryManager()
         self.memory_manager.start()
 
         self.frame_pool: List[np.ndarray] = []
         self.shared_memory: List[SharedMemory] = []
-        self.free_frames = self.queue_manager.Queue(maxsize)
         for index in range(maxsize):
             self.shared_memory.append(self.memory_manager.SharedMemory(
                 self.byte_count))
@@ -34,8 +33,6 @@ class FramePool:
 
     def __getstate__(self) -> Dict:
         d = dict(self.__dict__)
-        if 'queue_manager' in d:
-            del d['queue_manager']
         if 'memory_manager' in d:
             del d['memory_manager']
         del d['frame_pool']
@@ -78,7 +75,19 @@ class FramePool:
         return self.free_frames.qsize() > 0
 
     def close(self) -> None:
-        self.memory_manager.shutdown()
+        if hasattr(self, 'memory_manager'):
+            while not self.free_frames.empty():
+                self.free_frames.get()
+        else:
+            self.free_frames.cancel_join_thread()
+        self.frame_pool.clear()
+        for shared_memory in self.shared_memory:
+            shared_memory.close()
+        if hasattr(self, 'memory_manager'):
+            self.memory_manager.shutdown()
+
+    def __del__(self) -> None:
+        self.close()
 
 
 def create_frame_pool(

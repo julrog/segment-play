@@ -127,6 +127,7 @@ BODY_POINTS = [
 
 class Pose:
     def __init__(self, model_complexity: int = 1) -> None:
+        self.closed = False
         self.mp_pose = mp.solutions.pose
         self.predictor = self.mp_pose.Pose(
             model_complexity=model_complexity,
@@ -155,6 +156,7 @@ class Pose:
         ]
 
     def predict_raw(self, image: np.ndarray) -> Any:
+        assert not self.closed
         return self.predictor.process(image)
 
     def combine_landmarks(
@@ -209,4 +211,5 @@ class Pose:
         return pos
 
     def close(self) -> None:
+        self.closed = True
         self.predictor.close()

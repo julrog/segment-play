@@ -1,5 +1,5 @@
 import pickle
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 
 import numpy as np
 import pytest
@@ -12,15 +12,14 @@ from frame.shared import FramePool, create_frame_pool
 @pytest.mark.parametrize('template', [np.zeros([10, 10], dtype=np.uint8)])
 @pytest.mark.parametrize('maxsize', [4])
 def test_frame_pool_pickle(template: np.ndarray, maxsize: int) -> None:
-    frame_pool_handler = FramePool(template, maxsize)
-    assert len(frame_pool_handler.frame_pool) == maxsize
-    assert len(frame_pool_handler.shared_memory) == maxsize
-    assert frame_pool_handler.is_empty()
+    frame_pool = FramePool(template, maxsize)
+    assert len(frame_pool.frame_pool) == maxsize
+    assert len(frame_pool.shared_memory) == maxsize
+    assert frame_pool.is_empty()
 
     assert template.nbytes == 100
-    unpickeled: FramePool = pickle.loads(pickle.dumps(frame_pool_handler))
-    with pytest.raises(AttributeError):
-        assert unpickeled.queue_manager is None
+    frame_pool.free_frames = None  # ignore queue for same process pickling
+    unpickeled: FramePool = pickle.loads(pickle.dumps(frame_pool))
     with pytest.raises(AttributeError):
         assert unpickeled.memory_manager is None
     assert len(unpickeled.frame_pool) is maxsize
@@ -28,12 +27,12 @@ def test_frame_pool_pickle(template: np.ndarray, maxsize: int) -> None:
     unpickeled_again: FramePool = pickle.loads(
         pickle.dumps(unpickeled))
     with pytest.raises(AttributeError):
-        assert unpickeled_again.queue_manager is None
-    with pytest.raises(AttributeError):
         assert unpickeled_again.memory_manager is None
     assert len(unpickeled_again.frame_pool) is maxsize
 
-    frame_pool_handler.close()
+    frame_pool.free_frames = Queue()
+    unpickeled.free_frames = Queue()
+    unpickeled_again.free_frames = Queue()
 
 
 def test_full_frame_pool() -> None:
@@ -45,7 +44,6 @@ def test_full_frame_pool() -> None:
     assert not frame_pool.has_free_slots()
     with pytest.raises(ValueError):
         frame_pool.put(np.zeros([10, 10], dtype=np.uint8))
-    frame_pool.close()
 
 
 def modify_frame(pool: FramePool, number: int) -> None:
@@ -81,22 +79,19 @@ def test_pool_multi() -> None:
     assert pool.is_empty()
 
     del frame, modified_frame
-    pool.close()
 
 
 # TODO: not use camera for this
-@requires_env('slow')
+@requires_env('cam_tests')
 def test_frame_pool_from_camera() -> None:
     pool = create_frame_pool(2)
     default_cam_settings = CaptureSettings()
     assert pool.byte_count > 0
     assert pool.frame_pool[0].shape == (
         default_cam_settings.height, default_cam_settings.width, 3)
-    pool.close()
 
     cam_settings = CaptureSettings(width=1280, height=720)
     pool = create_frame_pool(2, cam_settings)
     assert pool.byte_count > 0
     assert pool.frame_pool[0].shape == (
         cam_settings.height, cam_settings.width, 3)
-    pool.close()

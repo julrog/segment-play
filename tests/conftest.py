@@ -11,6 +11,7 @@ from coverage_conditional_plugin import get_env_info
 from dotenv import load_dotenv
 
 from frame.camera import CaptureSettings
+from tests.ai_tester import AITester
 
 load_dotenv()
 get_env_info()
@@ -38,6 +39,18 @@ def sample_capture_settings() -> CaptureSettings:
 
 
 @pytest.fixture
+def sample_image() -> np.ndarray:
+    image_path = 'tests/resources/sample_image.jpg'
+    image = cv2.imread(image_path)
+    return image
+
+
+@pytest.fixture
+def ai_tester() -> AITester:
+    return AITester()
+
+
+@pytest.fixture
 def sample_video_frame_count() -> int:
     return 382
 
@@ -60,10 +73,18 @@ def sample_video_frame_gen() -> Callable[
     return generator
 
 
-def requires_env(*envs: str) -> Callable:
-    env = os.environ.get('TEST_TYPE', 'slow')
-
+def requires_env(*required_envs: str) -> Callable:
+    envs = []
+    if os.environ.get('CAM_TESTS', 'False') == 'True':
+        envs.append('cam_tests')
+    if os.environ.get('AI_TESTS', 'False') == 'True':
+        envs.append('ai_tests')
+    all_envs_set = True
+    for required_env in required_envs:
+        if required_env not in envs:
+            all_envs_set = False
+            break
     return pytest.mark.skipif(
-        env not in list(envs),
-        reason=f'Not suitable environment {env} for current test'
+        not all_envs_set,
+        reason='No suitable environment for current test'
     )

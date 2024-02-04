@@ -40,4 +40,3 @@ def test_track_frame_stats(
     assert 0.01 > stats.get_avg_delay()
     if frame_pool:
         assert stats.get_processing_frames() == 2.5
-        frame_pool.close()
