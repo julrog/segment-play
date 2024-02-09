@@ -112,11 +112,14 @@ def test_producer(
 
     assert isinstance(data, DataCollection)
     check_frame_data(data, sample_capture_settings, frame_pool)
+    if frame_pool is not None:
+        frame_pool.free_frame(data.get(FrameData).frame)
 
     frame_producer.stop()
     clear_queue(frame_queue)
 
 
+# TODO: check why it fails with not using frame pool (size 0)
 @pytest.mark.parametrize('frame_pool_size', [5, 20])
 @pytest.mark.parametrize('max_queue_size', [None, 10])
 def test_producer_no_frame_skips(

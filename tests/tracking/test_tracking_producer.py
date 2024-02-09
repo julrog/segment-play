@@ -142,6 +142,8 @@ def test_producer(
 
     assert isinstance(data, DataCollection)
     check_tracking_data(data, sample_capture_settings, frame_pool)
+    if frame_pool is not None:
+        frame_pool.free_frame(data.get(FrameData).frame)
 
     frame_producer.stop()
     tracking_producer.stop()
