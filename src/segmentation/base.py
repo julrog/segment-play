@@ -1,7 +1,9 @@
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import numpy as np
+from mobile_sam import SamPredictor as MobileSamPredictor
+from segment_anything import SamPredictor
 
 
 class BodyPartSegmentation(Enum):
@@ -12,14 +14,10 @@ class BodyPartSegmentation(Enum):
     ONLY_FACE = 4
 
 
-class Predictor:
-    def set_image(self, image: np.ndarray) -> None:
-        pass
-
-
 class Segmentation:
+    predictor: Union[SamPredictor, MobileSamPredictor]
+
     def __init__(self) -> None:
-        self.predictor: Any = None
         self.image_embedding: Any = None
 
     def get_image_embedding(self) -> Any:

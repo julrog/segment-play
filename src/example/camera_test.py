@@ -34,7 +34,8 @@ def main(args: Dict) -> None:
         while True:
             ret, frame = cap.read()
             if ret:
-                cv2.imshow('application', frame)
+                cv2.imshow('application',  cv2.cvtColor(
+                    frame, cv2.COLOR_RGB2BGR))
                 if chr(cv2.waitKey(1) & 255) == 'q':
                     break
     except KeyboardInterrupt:

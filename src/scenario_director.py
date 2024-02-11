@@ -287,7 +287,8 @@ class Director:
                 cv2.imwrite(recording_processed_name,
                             data.get(FrameData).get_frame(self.frame_pool))
 
-            cv2.imshow('application', processed_image)
+            cv2.imshow('application', cv2.cvtColor(
+                processed_image, cv2.COLOR_RGB2BGR))
 
             if self.frame_pool:
                 self.frame_pool.free_frame(data.get(FrameData).frame)

@@ -97,7 +97,8 @@ def main(args: Dict) -> None:
                     input_box = tracking_data.get_box(id)
                     image = show_box(image, input_box)
 
-                cv2.imshow('application', image)
+                cv2.imshow('application', cv2.cvtColor(
+                    image, cv2.COLOR_RGB2BGR))
                 if frame_pool:
                     frame_pool.free_frame(data.get(FrameData).frame)
 

@@ -9,9 +9,8 @@ from segmentation.base import Segmentation
 
 
 class MobileSam(Segmentation):
-    def __init__(self) -> None:
+    def __init__(self, checkpoint: str = './models/mobile_sam.pt') -> None:
         super().__init__()
-        checkpoint = './models/mobile_sam.pt'
         model_type = 'vit_t'
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         sam = sam_model_registry[model_type](checkpoint=checkpoint)
@@ -20,10 +19,6 @@ class MobileSam(Segmentation):
 
     def get_image_embedding(self) -> Any:
         return self.predictor.get_image_embedding().cpu().numpy()
-
-    def set_image(self, image: np.ndarray) -> None:
-        self.predictor.set_image(image)
-        self.image_embedding = self.get_image_embedding()
 
     def bbox_masks(
         self,

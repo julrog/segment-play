@@ -83,7 +83,8 @@ def main(args: Dict) -> None:
 
             boxed_image = show_box(mask_image, input_box / down_scale)
 
-            cv2.imshow('frame', boxed_image)
+            cv2.imshow('frame',  cv2.cvtColor(
+                boxed_image, cv2.COLOR_RGB2BGR))
             if chr(cv2.waitKey(1) & 255) == 'q':
                 break
     except KeyboardInterrupt:

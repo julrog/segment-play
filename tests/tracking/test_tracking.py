@@ -20,6 +20,17 @@ def test_track_object(appearances: Optional[List[int]]) -> None:
         assert track_object.last_appearance == [0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 
+def test_detection(sample_image: np.ndarray) -> None:
+    tracker = Tracker()
+
+    detections, img_info = tracker.inference(sample_image)
+    assert detections is not None
+    assert len(detections[0]) == 5
+    assert img_info['height'] == sample_image.shape[0]
+    assert img_info['width'] == sample_image.shape[1]
+    assert (img_info['raw_img'] == sample_image).all()
+
+
 def test_detection_basic(
     sample_video_frame_gen: Callable[[], Generator[np.ndarray, None, None]]
 ) -> None:

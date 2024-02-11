@@ -5,7 +5,6 @@ import time
 from multiprocessing import Process, Queue
 from typing import Any, List, Optional, Tuple
 
-import cv2
 import numpy as np
 
 from frame.producer import FrameData, free_output_queue
@@ -51,6 +50,28 @@ class PoseData(BaseData):
         return np.array(landmarks), point_modes
 
 
+def region_pose_estimation(
+        pose: Pose,
+        tracking_data: TrackingData,
+        frame: np.ndarray
+) -> PoseData:
+    all_landmarks = []
+    all_raw_landmarks = []
+    for id in range(len(tracking_data.targets)):
+        pad_box = tracking_data.get_padded_box(id)
+        cropped_conv_frame = \
+            frame[int(pad_box[1]):int(pad_box[3]),
+                  int(pad_box[0]):int(pad_box[2])]
+        landmarks, raw_landmarks = pose.predict(cropped_conv_frame)
+
+        if landmarks.any():
+            landmarks[:, 0] += pad_box[0]
+            landmarks[:, 1] += pad_box[1]
+        all_landmarks.append(landmarks)
+        all_raw_landmarks.append(raw_landmarks)
+    return PoseData(all_landmarks, all_raw_landmarks)
+
+
 def produce_pose(
     input_queue: Queue[DataCollection],
     output_queue: Queue[DataCollection],
@@ -70,30 +91,14 @@ def produce_pose(
     ):
         timer.tic()
         frame = data.get(FrameData).get_frame(frame_pool)
-        frame.flags.writeable = False
-        conv_pose_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        all_landmarks = []
-        all_raw_landmarks = []
-        tracking_data = data.get(TrackingData)
-        for id in range(len(tracking_data.targets)):
-            pad_box = tracking_data.get_padded_box(id)
-            cropped_conv_frame = \
-                conv_pose_frame[int(pad_box[1]):int(pad_box[3]),
-                                int(pad_box[0]):int(pad_box[2])]
-            landmarks, raw_landmarks = pose.predict(cropped_conv_frame)
-
-            if landmarks.any():
-                landmarks[:, 0] += pad_box[0]
-                landmarks[:, 1] += pad_box[1]
-            all_landmarks.append(landmarks)
-            all_raw_landmarks.append(raw_landmarks)
+        pose_data = region_pose_estimation(
+            pose, data.get(TrackingData), frame)
 
         if skip_frames:
             reduce_frame_discard_timer = free_output_queue(
                 output_queue, frame_pool, reduce_frame_discard_timer)
-        output_queue.put(
-            data.add(PoseData(all_landmarks, all_raw_landmarks)))
+        output_queue.put(data.add(pose_data))
         timer.toc()
         frame_count += 1
         if frame_count == log_cylces:

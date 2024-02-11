@@ -11,7 +11,13 @@ from coverage_conditional_plugin import get_env_info
 from dotenv import load_dotenv
 
 from frame.camera import CaptureSettings
+from frame.producer import FrameData
+from pipeline.data import DataCollection
+from pose.pose import Pose
+from pose.producer import region_pose_estimation
 from tests.ai_tester import AITester
+from tracking.producer import TrackingData
+from tracking.tracking import Tracker
 
 load_dotenv()
 get_env_info()
@@ -71,6 +77,29 @@ def sample_video_frame_gen() -> Callable[
             cap.release()
 
     return generator
+
+
+@pytest.fixture
+def track_data_collection(sample_image: np.ndarray) -> DataCollection:
+    tracker = Tracker()
+    tracker.update(sample_image)
+    data = DataCollection()
+    data.add(FrameData(sample_image))
+    data.add(TrackingData(tracker.get_all_targets()))
+    return data
+
+
+@pytest.fixture
+def pose_data_collection(sample_image: np.ndarray) -> DataCollection:
+    tracker = Tracker()
+    tracker.update(sample_image)
+    pose = Pose()
+    data = DataCollection()
+    data.add(FrameData(sample_image))
+    data.add(TrackingData(tracker.get_all_targets()))
+    data.add(region_pose_estimation(
+        pose, data.get(TrackingData), sample_image))
+    return data
 
 
 def requires_env(*required_envs: str) -> Callable:

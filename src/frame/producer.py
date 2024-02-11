@@ -89,6 +89,7 @@ def produce_capture(
             ret, frame = cap.retrieve()
             if not ret or stop_condition.value:  # pragma: no cover
                 break
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame.flags.writeable = False
             if skip_frames:
                 free_output_queue(output_queue, frame_pool)
