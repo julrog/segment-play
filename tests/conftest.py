@@ -45,6 +45,13 @@ def sample_capture_settings() -> CaptureSettings:
 
 
 @pytest.fixture
+def short_sample_capture_settings() -> CaptureSettings:
+    return CaptureSettings(
+        input=os.path.join('tests', 'resources', 'short_sample_video.mp4'),
+        width=1280, height=720)
+
+
+@pytest.fixture
 def sample_image() -> np.ndarray:
     image_path = 'tests/resources/sample_image.jpg'
     image = cv2.imread(image_path)
@@ -58,6 +65,11 @@ def ai_tester() -> AITester:
 
 @pytest.fixture
 def sample_video_frame_count() -> int:
+    return 382
+
+
+@pytest.fixture
+def short_sample_video_frame_count() -> int:
     return 382
 
 

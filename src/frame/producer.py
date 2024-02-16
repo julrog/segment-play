@@ -93,22 +93,27 @@ def produce_capture(
             frame.flags.writeable = False
             if skip_frames:
                 free_output_queue(output_queue, frame_pool)
+                output_queue.put(DataCollection().add(
+                    FrameData(frame, frame_pool)))
             else:
-                # wait until there is space in the queue
-                free_frame_slots = frame_pool is None or \
-                    frame_pool.has_free_slots()
-                while not free_frame_slots:
-                    time.sleep(0.01)
-                    free_frame_slots = frame_pool is None or \
-                        frame_pool.has_free_slots()
+                placed_frame = False
+                # try and wait until there is space in the queue
+                while not placed_frame:
+                    try:
+                        output_queue.put(DataCollection().add(
+                            FrameData(frame, frame_pool)))
+                        placed_frame = True
+                    except ValueError:
+                        time.sleep(0.01)
+
             count += 1
-            output_queue.put(DataCollection().add(
-                FrameData(frame, frame_pool)))
 
         if skip_frames:
             free_output_queue(output_queue, frame_pool)
         output_queue.put(DataCollection().add(CloseData()))
     except Exception as e:  # pragma: no cover
+        if skip_frames:
+            free_output_queue(output_queue, frame_pool)
         output_queue.put(DataCollection().add(
             ExceptionCloseData(e)))
     output_queue.cancel_join_thread()

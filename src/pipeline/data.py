@@ -56,11 +56,15 @@ def pipeline_data_generator(
     input_queue: Queue[DataCollection],
     output_queue: Queue[DataCollection],
     expected_data: List[Type],
+    timeout: float = 10.0
 ) -> Generator[DataCollection, None, None]:
     try:
+        empty: bool = False
+        empty_time: float = time.time()
         while True:
             try:
                 data = input_queue.get(timeout=0.01)
+                empty = False
                 if data.is_closed():
                     output_queue.put(data)
                     break
@@ -68,7 +72,11 @@ def pipeline_data_generator(
                            for ed in expected_data), MISSING_DATA_MESSAGE
                 yield data
             except queue.Empty:
-                pass
+                if not empty:
+                    empty_time = time.time()
+                    empty = True
+                if empty_time + timeout < time.time():
+                    raise Exception('Pipeline data generator timeout!')
     except KeyboardInterrupt:  # pragma: no cover
         pass
     except Exception as e:

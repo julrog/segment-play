@@ -54,7 +54,11 @@ def test_exception_data() -> None:
     assert data.get(ExceptionCloseData).exception.message == 'Test'
 
 
-def fill_queue(input_queue: Queue[DataCollection], count: int, missing: bool) -> None:
+def fill_queue(
+    input_queue: Queue[DataCollection],
+    count: int,
+    missing: bool
+) -> None:
     for i in range(count):
         input_queue.put(DataCollection().add(TData(i + 1)))
     if missing:
@@ -76,6 +80,8 @@ def test_pipeline_data_generator() -> None:
             assert data.get(TData).value == count
         else:
             assert data.is_closed()
+            assert not data.has(ExceptionCloseData), data.get(
+                ExceptionCloseData).exception
         count += 1
     assert count == 4
 
@@ -98,6 +104,8 @@ def test_pipeline_data_generator_exception() -> None:
             assert not data.is_closed()
         else:
             assert data.is_closed()
+            assert not data.has(ExceptionCloseData), data.get(
+                ExceptionCloseData).exception
         count += 1
     assert count == 3
 
@@ -109,3 +117,19 @@ def test_pipeline_data_generator_exception() -> None:
         ExceptionCloseData).exception) == MISSING_DATA_MESSAGE
 
     fill_process.join()
+
+
+def test_pipeline_data_generator_timeout() -> None:
+    input_queue: Queue[DataCollection] = Queue(4)
+    output_queue: Queue[DataCollection] = Queue(4)
+
+    for _ in pipeline_data_generator(
+            input_queue, output_queue, [TData], 0.05):
+        pass
+
+    assert output_queue.qsize() == 1
+    outdata = output_queue.get()
+    assert outdata.is_closed()
+    assert outdata.has(ExceptionCloseData)
+    assert str(outdata.get(
+        ExceptionCloseData).exception) == 'Pipeline data generator timeout!'

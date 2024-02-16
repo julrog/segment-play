@@ -11,7 +11,7 @@ from frame.producer import FrameData, free_output_queue
 from frame.shared import FramePool
 from ocsort.timer import Timer
 from pipeline.data import (BaseData, CloseData, DataCollection,
-                           pipeline_data_generator)
+                           ExceptionCloseData, pipeline_data_generator)
 from pose.pose import BODY_POINTS, Pose
 from segmentation.base import BodyPartSegmentation
 from tracking.producer import TrackingData
@@ -80,38 +80,44 @@ def produce_pose(
     skip_frames: bool = True,
     log_cylces: int = 100
 ) -> None:
-    reduce_frame_discard_timer = 0.0
-    timer = Timer()
-    pose = Pose(model_complexity)
-    frame_count = 0
-    for data in pipeline_data_generator(
-        input_queue,
-        output_queue,
-        [TrackingData]
-    ):
-        timer.tic()
-        frame = data.get(FrameData).get_frame(frame_pool)
+    try:
+        reduce_frame_discard_timer = 0.0
+        timer = Timer()
+        pose = Pose(model_complexity)
+        frame_count = 0
 
-        pose_data = region_pose_estimation(
-            pose, data.get(TrackingData), frame)
+        for data in pipeline_data_generator(
+            input_queue,
+            output_queue,
+            [TrackingData]
+        ):
+            timer.tic()
+            frame = data.get(FrameData).get_frame(frame_pool)
 
+            pose_data = region_pose_estimation(
+                pose, data.get(TrackingData), frame)
+
+            if skip_frames:
+                reduce_frame_discard_timer = free_output_queue(
+                    output_queue, frame_pool, reduce_frame_discard_timer)
+            output_queue.put(data.add(pose_data))
+            timer.toc()
+            frame_count += 1
+            if frame_count == log_cylces:
+                timer.clear()
+            if frame_count % log_cylces == 0 and frame_count > log_cylces:
+                average_time = 1. / timer.average_time, 1. / \
+                    (timer.average_time + reduce_frame_discard_timer)
+                logging.info(f'Pose-FPS: {average_time}')
+            if skip_frames and reduce_frame_discard_timer > 0.015:
+                time.sleep(reduce_frame_discard_timer)
+    except Exception as e:  # pragma: no cover
         if skip_frames:
-            reduce_frame_discard_timer = free_output_queue(
-                output_queue, frame_pool, reduce_frame_discard_timer)
-        output_queue.put(data.add(pose_data))
-        timer.toc()
-        frame_count += 1
-        if frame_count == log_cylces:
-            timer.clear()
-        if frame_count % log_cylces == 0 and frame_count > log_cylces:
-            average_time = 1. / timer.average_time, 1. / \
-                (timer.average_time + reduce_frame_discard_timer)
-            logging.info(f'Pose-FPS: {average_time}')
-        if skip_frames and reduce_frame_discard_timer > 0.015:
-            time.sleep(reduce_frame_discard_timer)
-    if skip_frames:
-        free_output_queue(output_queue, frame_pool)
-    pose.close()
+            free_output_queue(output_queue, frame_pool)
+        output_queue.put(DataCollection().add(
+            ExceptionCloseData(e)))
+    if pose:  # pragma: no cover
+        pose.close()
     input_queue.cancel_join_thread()
     output_queue.cancel_join_thread()
 

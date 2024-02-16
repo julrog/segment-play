@@ -1,6 +1,6 @@
 import queue
 import time
-from multiprocessing import Queue, Value
+from multiprocessing import Process, Queue, Value
 from multiprocessing.sharedctypes import Synchronized
 from typing import Optional
 
@@ -12,7 +12,7 @@ from frame.camera import CaptureSettings
 from frame.producer import (FrameData, VideoCaptureProducer, free_output_queue,
                             produce_capture)
 from frame.shared import FramePool, create_frame_pool
-from pipeline.data import DataCollection, clear_queue
+from pipeline.data import DataCollection, ExceptionCloseData, clear_queue
 
 
 def check_frame_data(
@@ -68,21 +68,48 @@ def test_free_output_queue(
         time.sleep(0.001)
 
 
+def slow_consume(
+    queue: Queue,
+    frame_pool: FramePool,
+    number: int
+) -> None:
+    for _ in range(number):
+        time.sleep(0.05)
+        data = queue.get()
+        if frame_pool and data.has(FrameData):
+            frame_pool.free_frame(data.get(FrameData).frame)
+    while True:
+        data = queue.get()
+        if frame_pool and data.has(FrameData):
+            frame_pool.free_frame(data.get(FrameData).frame)
+        if data.is_closed():
+            break
+    queue.put(data)
+
+
 @pytest.mark.parametrize('use_frame_pool', [False, True])
-def test_produce_capture(
-        sample_capture_settings: CaptureSettings,
+def test_slow_produce_capture(
+        short_sample_capture_settings: CaptureSettings,
         use_frame_pool: bool
 ) -> None:
     frame_pool: Optional[FramePool] = create_frame_pool(
-        2, sample_capture_settings) if use_frame_pool else None
+        2, short_sample_capture_settings) if use_frame_pool else None
     frame_queue: Queue[DataCollection] = Queue()
     stop_condition: Synchronized[int] = Value('i', 0)  # type: ignore
 
-    produce_capture(frame_queue, sample_capture_settings,
+    consume_process = Process(target=slow_consume, args=(frame_pool, 4))
+    consume_process.start()
+
+    produce_capture(frame_queue, short_sample_capture_settings,
                     stop_condition, frame_pool)
+
+    consume_process.join()
+
     time.sleep(0.02)
     data: DataCollection = frame_queue.get()
     assert data.is_closed()
+    assert not data.has(ExceptionCloseData), data.get(
+        ExceptionCloseData).exception
     assert not data.has(FrameData)
     clear_queue(frame_queue)
 
@@ -180,6 +207,8 @@ def test_producer_no_frame_skips(
                     frame_pool.free_frame(data.get(FrameData).frame)
             else:
                 assert data.is_closed()
+                assert not data.has(ExceptionCloseData), data.get(
+                    ExceptionCloseData).exception
                 break
         except queue.Empty:
             pass
@@ -238,6 +267,8 @@ def test_producer_no_frame_skips_queue_size_limit_on_close(
                 frame_pool.free_frame(data.get(FrameData).frame)
             else:
                 assert data.is_closed()
+                assert not data.has(ExceptionCloseData), data.get(
+                    ExceptionCloseData).exception
                 break
 
         except queue.Empty:

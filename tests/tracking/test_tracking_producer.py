@@ -9,7 +9,8 @@ import pytest
 from frame.camera import CaptureSettings
 from frame.producer import FrameData, VideoCaptureProducer
 from frame.shared import FramePool, create_frame_pool
-from pipeline.data import CloseData, DataCollection, clear_queue
+from pipeline.data import (CloseData, DataCollection, ExceptionCloseData,
+                           clear_queue)
 from tests.frame.test_frame_producer import check_frame_data
 from tracking.producer import TrackingData, TrackProducer, produce_tracking
 from util.image import create_black_image
@@ -93,7 +94,7 @@ def test_produce_tracking_with_video(
         use_frame_pool: bool
 ) -> None:
     frame_pool: Optional[FramePool] = create_frame_pool(
-        2, sample_capture_settings) if use_frame_pool else None
+        10, sample_capture_settings) if use_frame_pool else None
     frame_queue: Queue[DataCollection] = Queue()
     tracking_queue: Queue[DataCollection] = Queue()
 
@@ -102,9 +103,14 @@ def test_produce_tracking_with_video(
     frame_producer.start()
 
     produce_tracking(frame_queue, tracking_queue, 1, frame_pool)
-    data: DataCollection = tracking_queue.get()
 
+    assert tracking_queue.qsize() == 2
+    check_tracking_data(tracking_queue.get(), None, frame_pool)
+
+    data: DataCollection = tracking_queue.get()
     assert data.is_closed()
+    assert not data.has(ExceptionCloseData), data.get(
+        ExceptionCloseData).exception
     assert not data.has(TrackingData)
 
     frame_producer.stop()
@@ -167,7 +173,9 @@ def test_produce_tracking_logs(caplog: pytest.LogCaptureFixture) -> None:
 
     with caplog.at_level(logging.INFO):
         produce_tracking(input_queue, output_queue, log_cylces=2)
-        logging.info(f'Tracking-FPS: {0}')
+
+        assert output_queue.qsize() == 2
+        check_tracking_data(output_queue.get(), None)
 
         close_data = output_queue.get()
         assert isinstance(close_data, DataCollection)
@@ -175,7 +183,7 @@ def test_produce_tracking_logs(caplog: pytest.LogCaptureFixture) -> None:
         assert output_queue.empty()
 
         log_tuples = caplog.record_tuples
-        assert len(log_tuples) == 2
+        assert len(log_tuples) == 1
         for log_tuple in log_tuples:
             assert log_tuple[0] == 'root'
             assert log_tuple[1] == logging.INFO

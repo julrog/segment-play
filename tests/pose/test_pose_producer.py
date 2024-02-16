@@ -10,7 +10,8 @@ import pytest
 from frame.camera import CaptureSettings
 from frame.producer import FrameData, VideoCaptureProducer
 from frame.shared import FramePool, create_frame_pool
-from pipeline.data import CloseData, DataCollection, clear_queue
+from pipeline.data import (CloseData, DataCollection, ExceptionCloseData,
+                           clear_queue)
 from pose.pose import BODY_POINTS, DEFAULT_IMPORTANT_LANDMARKS, Pose
 from pose.producer import PoseData, PoseProducer, produce_pose
 from segmentation.base import BodyPartSegmentation
@@ -148,6 +149,8 @@ def test_produce_pose(
 
     data = pose_queue.get()
     assert data.is_closed()
+    assert not data.has(ExceptionCloseData), data.get(
+        ExceptionCloseData).exception
     assert not data.has(PoseData)
 
     clear_queue(frame_queue)
@@ -158,12 +161,12 @@ def test_produce_pose(
 # TODO: check why it fails with not using frame pool
 @pytest.mark.parametrize('use_frame_pool', [True])
 def test_produce_pose_with_video(
-        sample_capture_settings: CaptureSettings,
+        short_sample_capture_settings: CaptureSettings,
         use_frame_pool: bool
 ) -> None:
     freeze_support()
     frame_pool: Optional[FramePool] = create_frame_pool(
-        10, sample_capture_settings) if use_frame_pool else None
+        10, short_sample_capture_settings) if use_frame_pool else None
     frame_queue: Queue[DataCollection] = Queue()
     tracking_queue: Queue[DataCollection] = Queue()
     pose_queue: Queue[DataCollection] = Queue()
@@ -173,14 +176,23 @@ def test_produce_pose_with_video(
     tracking_producer.start()
 
     frame_producer = VideoCaptureProducer(
-        frame_queue, sample_capture_settings, frame_pool, skip_frames=False)
+        frame_queue,
+        short_sample_capture_settings,
+        frame_pool,
+        skip_frames=False
+    )
     frame_producer.start()
 
     produce_pose(tracking_queue, pose_queue, 1, frame_pool)
 
+    assert pose_queue.qsize() == 2
+    check_pose_data(pose_queue.get(), None, frame_pool, False)
+
     data: DataCollection = pose_queue.get()
 
     assert data.is_closed()
+    assert not data.has(ExceptionCloseData), data.get(
+        ExceptionCloseData).exception
     assert not data.has(PoseData)
 
     frame_producer.stop()
@@ -256,7 +268,9 @@ def test_produce_pose_logs(caplog: pytest.LogCaptureFixture) -> None:
 
     with caplog.at_level(logging.INFO):
         produce_pose(input_queue, output_queue, log_cylces=2)
-        logging.info(f'Pose-FPS: {0}')
+
+        assert output_queue.qsize() == 2
+        check_pose_data(output_queue.get(), None, None, False)
 
         close_data = output_queue.get()
         assert isinstance(close_data, DataCollection)
@@ -264,7 +278,7 @@ def test_produce_pose_logs(caplog: pytest.LogCaptureFixture) -> None:
         assert output_queue.empty()
 
         log_tuples = caplog.record_tuples
-        assert len(log_tuples) == 2
+        assert len(log_tuples) == 1
         for log_tuple in log_tuples:
             assert log_tuple[0] == 'root'
             assert log_tuple[1] == logging.INFO
