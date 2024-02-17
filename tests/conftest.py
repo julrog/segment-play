@@ -2,7 +2,7 @@ import glob
 import os
 import shutil
 from collections.abc import Callable
-from typing import Generator
+from typing import Generator, Tuple
 
 import cv2
 import numpy as np
@@ -15,6 +15,8 @@ from frame.producer import FrameData
 from pipeline.data import DataCollection
 from pose.pose import Pose
 from pose.producer import region_pose_estimation
+from segmentation.mobile_sam import MobileSam
+from segmentation.producer import segmentation_calculation
 from tests.ai_tester import AITester
 from tracking.producer import TrackingData
 from tracking.tracking import Tracker
@@ -35,6 +37,16 @@ def pytest_sessionfinish(session: pytest.Session) -> None:
 @pytest.fixture
 def sample_file_2_path() -> str:
     return 'tests/resources/sample_file_2.txt'
+
+
+@pytest.fixture
+def sample_video_data() -> Tuple[str, int, int]:
+    return os.path.join('tests', 'resources', 'sample_video.mp4'), 1280, 720
+
+
+@pytest.fixture
+def sample_video_path() -> str:
+    return os.path.join('tests', 'resources', 'sample_video.mp4')
 
 
 @pytest.fixture
@@ -111,6 +123,21 @@ def pose_data_collection(sample_image: np.ndarray) -> DataCollection:
     data.add(TrackingData(tracker.get_all_targets()))
     data.add(region_pose_estimation(
         pose, data.get(TrackingData), sample_image))
+    return data
+
+
+@pytest.fixture
+def segmentation_data_collection(sample_image: np.ndarray) -> DataCollection:
+    segmentation = MobileSam()
+    tracker = Tracker()
+    tracker.update(sample_image)
+    data = DataCollection()
+    data.add(FrameData(sample_image))
+    data.add(TrackingData(tracker.get_all_targets()))
+    segmentation_data = segmentation_calculation(
+        segmentation, sample_image, 1.0, data.get(TrackingData), None, None
+    )
+    data.add(segmentation_data)
     return data
 
 

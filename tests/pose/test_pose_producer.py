@@ -1,7 +1,7 @@
 import logging
 import queue
 import time
-from multiprocessing import Queue, freeze_support
+from multiprocessing import Queue
 from typing import Optional
 
 import numpy as np
@@ -117,9 +117,9 @@ def test_produce_pose(
 ) -> None:
     frame_pool: Optional[FramePool] = FramePool(
         sample_image, 10) if use_frame_pool else None
-    frame_queue: Queue[DataCollection] = Queue()
-    tracking_queue: Queue[DataCollection] = Queue()
-    pose_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
+    tracking_queue: 'Queue[DataCollection]' = Queue()
+    pose_queue: 'Queue[DataCollection]' = Queue()
 
     for _ in range(3):
         frame_queue.put(DataCollection().add(
@@ -138,14 +138,10 @@ def test_produce_pose(
     assert tracking_queue.empty()
     assert pose_queue.qsize() == 5
 
-    for _ in range(3):
+    for i in range(3 + 1):
         data = pose_queue.get()
         assert isinstance(data, DataCollection)
-        check_pose_data(data, None, frame_pool)
-
-    data = pose_queue.get()
-    assert isinstance(data, DataCollection)
-    check_pose_data(data, None, frame_pool, False)
+        check_pose_data(data, None, frame_pool, i < 3)
 
     data = pose_queue.get()
     assert data.is_closed()
@@ -164,12 +160,11 @@ def test_produce_pose_with_video(
         short_sample_capture_settings: CaptureSettings,
         use_frame_pool: bool
 ) -> None:
-    freeze_support()
     frame_pool: Optional[FramePool] = create_frame_pool(
         10, short_sample_capture_settings) if use_frame_pool else None
-    frame_queue: Queue[DataCollection] = Queue()
-    tracking_queue: Queue[DataCollection] = Queue()
-    pose_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
+    tracking_queue: 'Queue[DataCollection]' = Queue()
+    pose_queue: 'Queue[DataCollection]' = Queue()
 
     tracking_producer = TrackProducer(
         frame_queue, tracking_queue, 1, frame_pool, skip_frames=False)
@@ -209,9 +204,9 @@ def test_producer(
 ) -> None:
     frame_pool: Optional[FramePool] = create_frame_pool(
         10, sample_capture_settings) if use_frame_pool else None
-    frame_queue: Queue[DataCollection] = Queue()
-    tracking_queue: Queue[DataCollection] = Queue()
-    pose_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
+    tracking_queue: 'Queue[DataCollection]' = Queue()
+    pose_queue: 'Queue[DataCollection]' = Queue()
 
     pose_producer = PoseProducer(
         tracking_queue, pose_queue, 1, frame_pool, skip_frames=False)
@@ -251,8 +246,8 @@ def test_producer(
 
 
 def test_produce_pose_logs(caplog: pytest.LogCaptureFixture) -> None:
-    input_queue: Queue[DataCollection] = Queue()
-    output_queue: Queue[DataCollection] = Queue()
+    input_queue: 'Queue[DataCollection]' = Queue()
+    output_queue: 'Queue[DataCollection]' = Queue()
 
     for _ in range(4):
         input_queue.put(DataCollection().add(
@@ -286,7 +281,7 @@ def test_produce_pose_logs(caplog: pytest.LogCaptureFixture) -> None:
 
 
 def test_stop_pose_producer_early() -> None:
-    frame_queue: Queue[DataCollection] = Queue()
-    pose_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
+    pose_queue: 'Queue[DataCollection]' = Queue()
     track_producer = PoseProducer(frame_queue, pose_queue)
     track_producer.stop()

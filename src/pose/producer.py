@@ -73,8 +73,8 @@ def region_pose_estimation(
 
 
 def produce_pose(
-    input_queue: Queue[DataCollection],
-    output_queue: Queue[DataCollection],
+    input_queue: 'Queue[DataCollection]',
+    output_queue: 'Queue[DataCollection]',
     model_complexity: int = 1,
     frame_pool: Optional[FramePool] = None,
     skip_frames: bool = True,
@@ -101,6 +101,7 @@ def produce_pose(
                 reduce_frame_discard_timer = free_output_queue(
                     output_queue, frame_pool, reduce_frame_discard_timer)
             output_queue.put(data.add(pose_data))
+
             timer.toc()
             frame_count += 1
             if frame_count == log_cylces:
@@ -125,8 +126,8 @@ def produce_pose(
 class PoseProducer:
     def __init__(
         self,
-        input_queue: Queue[DataCollection],
-        output_queue: Queue[DataCollection],
+        input_queue: 'Queue[DataCollection]',
+        output_queue: 'Queue[DataCollection]',
         model_complexity: int = 1,
         frame_pool: Optional[FramePool] = None,
         skip_frames: bool = True,

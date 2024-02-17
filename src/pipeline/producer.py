@@ -8,8 +8,8 @@ from pipeline.data import DataCollection, ExceptionCloseData
 
 
 def interruptible(
-    fn: Callable[[Queue[DataCollection], Any], None],
-    output_queue: Queue[DataCollection],
+    fn: Callable[['Queue[DataCollection]', Any], None],
+    output_queue: 'Queue[DataCollection]',
     *args: Any,
     **kwargs: Any
 ) -> None:

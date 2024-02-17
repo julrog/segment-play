@@ -34,8 +34,8 @@ class TrackingData(BaseData):
 
 
 def produce_tracking(
-    input_queue: Queue[DataCollection],
-    output_queue: Queue[DataCollection],
+    input_queue: 'Queue[DataCollection]',
+    output_queue: 'Queue[DataCollection]',
     down_scale: float = 1.0,
     frame_pool: Optional[FramePool] = None,
     skip_frames: bool = True,
@@ -49,7 +49,8 @@ def produce_tracking(
         for data in pipeline_data_generator(
             input_queue,
             output_queue,
-            [FrameData]
+            [FrameData],
+            receiver_name='Tracking'
         ):
             timer.tic()
             frame = data.get(FrameData).get_frame(frame_pool)
@@ -80,8 +81,8 @@ def produce_tracking(
 class TrackProducer:
     def __init__(
         self,
-            input_queue: Queue[DataCollection],
-            output_queue: Queue[DataCollection],
+            input_queue: 'Queue[DataCollection]',
+            output_queue: 'Queue[DataCollection]',
             down_scale: float = 1.0,
             frame_pool: Optional[FramePool] = None,
             skip_frames: bool = True,

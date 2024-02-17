@@ -25,13 +25,13 @@ class FrameProcessingPipeline:
     ) -> None:
         self.use_pose = use_pose
 
-        self.frame_queue: Queue[DataCollection] = Queue()
-        self.tracking_queue: Queue[DataCollection] = Queue()
-        queue_for_segmentation: Queue[DataCollection] = self.tracking_queue
+        self.frame_queue: 'Queue[DataCollection]' = Queue()
+        self.tracking_queue: 'Queue[DataCollection]' = Queue()
+        queue_for_segmentation: 'Queue[DataCollection]' = self.tracking_queue
         if self.use_pose:
-            self.pose_queue: Queue[DataCollection] = Queue()
+            self.pose_queue: 'Queue[DataCollection]' = Queue()
             queue_for_segmentation = self.pose_queue
-        self.segment_queue: Queue[DataCollection] = Queue()
+        self.segment_queue: 'Queue[DataCollection]' = Queue()
         self.segments: List[SegmentProducer] = [
             SegmentProducer(
                 queue_for_segmentation,

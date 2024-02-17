@@ -3,6 +3,8 @@ from __future__ import annotations
 import time
 from multiprocessing import Process, Queue
 
+import pytest
+
 from pipeline.data import (MISSING_DATA_MESSAGE, BaseData, CloseData,
                            DataCollection, ExceptionCloseData,
                            pipeline_data_generator)
@@ -55,7 +57,7 @@ def test_exception_data() -> None:
 
 
 def fill_queue(
-    input_queue: Queue[DataCollection],
+    input_queue: 'Queue[DataCollection]',
     count: int,
     missing: bool
 ) -> None:
@@ -67,8 +69,8 @@ def fill_queue(
 
 
 def test_pipeline_data_generator() -> None:
-    input_queue: Queue[DataCollection] = Queue(4)
-    output_queue: Queue[DataCollection] = Queue(4)
+    input_queue: 'Queue[DataCollection]' = Queue(4)
+    output_queue: 'Queue[DataCollection]' = Queue(4)
 
     fill_process = Process(target=fill_queue, args=(input_queue, 3, False))
     fill_process.start()
@@ -89,8 +91,8 @@ def test_pipeline_data_generator() -> None:
 
 
 def test_pipeline_data_generator_exception() -> None:
-    input_queue: Queue[DataCollection] = Queue(4)
-    output_queue: Queue[DataCollection] = Queue(4)
+    input_queue: 'Queue[DataCollection]' = Queue(4)
+    output_queue: 'Queue[DataCollection]' = Queue(4)
 
     fill_process = Process(target=fill_queue, args=(input_queue, 2, True))
     fill_process.start()
@@ -119,17 +121,22 @@ def test_pipeline_data_generator_exception() -> None:
     fill_process.join()
 
 
-def test_pipeline_data_generator_timeout() -> None:
-    input_queue: Queue[DataCollection] = Queue(4)
-    output_queue: Queue[DataCollection] = Queue(4)
+@pytest.mark.parametrize('timeout_name', [None, 'Test'])
+def test_pipeline_data_generator_timeout(timeout_name: str) -> None:
+    input_queue: 'Queue[DataCollection]' = Queue(4)
+    output_queue: 'Queue[DataCollection]' = Queue(4)
 
     for _ in pipeline_data_generator(
-            input_queue, output_queue, [TData], 0.05):
+            input_queue, output_queue, [TData], 0.05, timeout_name):
         pass
 
     assert output_queue.qsize() == 1
     outdata = output_queue.get()
     assert outdata.is_closed()
     assert outdata.has(ExceptionCloseData)
-    assert str(outdata.get(
-        ExceptionCloseData).exception) == 'Pipeline data generator timeout!'
+    if timeout_name:
+        assert str(outdata.get(
+            ExceptionCloseData).exception) == f'Pipeline data generator timeout for {timeout_name}!'  # noqa: E501
+    else:
+        assert str(outdata.get(
+            ExceptionCloseData).exception) == 'Pipeline data generator timeout!'  # noqa: E501

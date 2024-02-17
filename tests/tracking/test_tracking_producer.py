@@ -62,8 +62,8 @@ def test_tracking_data() -> None:
 
 @pytest.mark.parametrize('use_frame_pool', [False, True])
 def test_produce_tracking(use_frame_pool: bool) -> None:
-    input_queue: Queue[DataCollection] = Queue()
-    output_queue: Queue[DataCollection] = Queue()
+    input_queue: 'Queue[DataCollection]' = Queue()
+    output_queue: 'Queue[DataCollection]' = Queue()
     frame_pool: Optional[FramePool] = FramePool(
         create_black_image((100, 100, 3)), 2) if use_frame_pool else None
 
@@ -95,8 +95,8 @@ def test_produce_tracking_with_video(
 ) -> None:
     frame_pool: Optional[FramePool] = create_frame_pool(
         10, sample_capture_settings) if use_frame_pool else None
-    frame_queue: Queue[DataCollection] = Queue()
-    tracking_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
+    tracking_queue: 'Queue[DataCollection]' = Queue()
 
     frame_producer = VideoCaptureProducer(
         frame_queue, sample_capture_settings, frame_pool)
@@ -125,8 +125,8 @@ def test_producer(
 ) -> None:
     frame_pool: Optional[FramePool] = create_frame_pool(
         2, sample_capture_settings) if use_frame_pool else None
-    frame_queue: Queue[DataCollection] = Queue()
-    tracking_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
+    tracking_queue: 'Queue[DataCollection]' = Queue()
 
     frame_producer = VideoCaptureProducer(
         frame_queue, sample_capture_settings, frame_pool)
@@ -158,8 +158,8 @@ def test_producer(
 
 
 def test_produce_tracking_logs(caplog: pytest.LogCaptureFixture) -> None:
-    input_queue: Queue[DataCollection] = Queue()
-    output_queue: Queue[DataCollection] = Queue()
+    input_queue: 'Queue[DataCollection]' = Queue()
+    output_queue: 'Queue[DataCollection]' = Queue()
 
     input_queue.put(DataCollection().add(
         FrameData(np.zeros((100, 100, 3), dtype=np.uint8))))
@@ -191,7 +191,7 @@ def test_produce_tracking_logs(caplog: pytest.LogCaptureFixture) -> None:
 
 
 def test_stop_track_producer_early() -> None:
-    frame_queue: Queue[DataCollection] = Queue()
-    tracking_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
+    tracking_queue: 'Queue[DataCollection]' = Queue()
     track_producer = TrackProducer(frame_queue, tracking_queue)
     track_producer.stop()

@@ -44,7 +44,7 @@ def test_free_output_queue(
     queued_items: int,
     discard_time: Optional[float]
 ) -> None:
-    output_queue: Queue[DataCollection] = Queue()
+    output_queue: 'Queue[DataCollection]' = Queue()
     for _ in range(queued_items):
         output_queue.put(DataCollection())
     time.sleep(0.001)  # delay necessary, otherwise empty is not up-to-date
@@ -94,7 +94,7 @@ def test_slow_produce_capture(
 ) -> None:
     frame_pool: Optional[FramePool] = create_frame_pool(
         2, short_sample_capture_settings) if use_frame_pool else None
-    frame_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
     stop_condition: Synchronized[int] = Value('i', 0)  # type: ignore
 
     consume_process = Process(target=slow_consume, args=(frame_pool, 4))
@@ -121,7 +121,7 @@ def test_producer(
 ) -> None:
     frame_pool: Optional[FramePool] = create_frame_pool(
         2, sample_capture_settings) if use_frame_pool else None
-    frame_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
 
     frame_producer = VideoCaptureProducer(
         frame_queue, sample_capture_settings, frame_pool)
@@ -161,7 +161,7 @@ def test_producer_no_frame_skips(
         frame_pool_size,
         sample_capture_settings
     ) if frame_pool_size > 0 else None
-    frame_queue: Queue[DataCollection] = Queue(
+    frame_queue: 'Queue[DataCollection]' = Queue(
         max_queue_size) if max_queue_size is not None else Queue()
 
     frame_producer = VideoCaptureProducer(
@@ -235,7 +235,7 @@ def test_producer_no_frame_skips_queue_size_limit_on_close(
         sample_capture_settings
     )
 
-    frame_queue: Queue[DataCollection] = Queue(max_queue_size)
+    frame_queue: 'Queue[DataCollection]' = Queue(max_queue_size)
 
     frame_producer = VideoCaptureProducer(
         frame_queue, sample_capture_settings, frame_pool, skip_frames=False)
@@ -287,7 +287,7 @@ def test_producer_no_frame_skips_queue_size_limit_on_close(
 def test_producer_early_stop(
     sample_capture_settings: CaptureSettings,
 ) -> None:
-    frame_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
 
     producer = VideoCaptureProducer(
         frame_queue, sample_capture_settings)
@@ -301,7 +301,7 @@ def test_producer_early_stop(
 def test_producer_with_camera(use_settings: bool) -> None:
     default_cam_settings: Optional[CaptureSettings] = CaptureSettings(
     ) if use_settings else None
-    frame_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
 
     producer = VideoCaptureProducer(
         frame_queue, default_cam_settings)

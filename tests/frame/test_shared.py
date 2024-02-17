@@ -1,5 +1,6 @@
 import pickle
 from multiprocessing import Process, Queue
+from typing import Tuple
 
 import numpy as np
 import pytest
@@ -79,6 +80,22 @@ def test_pool_multi() -> None:
     assert pool.is_empty()
 
     del frame, modified_frame
+
+
+def test_frame_pool_from_setting(
+    sample_video_data: Tuple[str, int, int]
+) -> None:
+    pool = create_frame_pool(2, CaptureSettings(
+        sample_video_data[0], sample_video_data[1], sample_video_data[2]))
+    assert pool.byte_count > 0
+    assert pool.frame_pool[0].shape == (
+        sample_video_data[2], sample_video_data[1], 3)
+
+
+def test_frame_pool_from_non_existing_video() -> None:
+    with pytest.raises(ValueError):
+        create_frame_pool(
+            2, CaptureSettings('does_not_exist.mp4', 1, 1))
 
 
 # TODO: not use camera for this

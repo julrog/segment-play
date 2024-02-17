@@ -38,10 +38,10 @@ def main(args: Dict) -> None:
     down_scale = args.get('down_scale', 1.0)
     camera_settings = parse_camera_settings(args)
 
-    frame_queue: Queue[DataCollection] = Queue()
+    frame_queue: 'Queue[DataCollection]' = Queue()
     frame_pool = create_frame_pool(100, camera_settings)
 
-    tracking_queue: Queue[DataCollection] = Queue()
+    tracking_queue: 'Queue[DataCollection]' = Queue()
     tracker = TrackProducer(frame_queue, tracking_queue,
                             down_scale, frame_pool)
 

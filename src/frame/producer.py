@@ -39,7 +39,7 @@ class FrameData(BaseData):
 
 
 def free_output_queue(
-        output_queue: Queue[DataCollection],
+        output_queue: 'Queue[DataCollection]',
         frame_pool: Optional[FramePool] = None,
         reduce_frame_discard_timer: Optional[float] = None
 ) -> Optional[float]:
@@ -61,7 +61,7 @@ def free_output_queue(
 
 
 def produce_capture(
-        output_queue: Queue[DataCollection],
+        output_queue: 'Queue[DataCollection]',
         settings: Optional[CaptureSettings],
         stop_condition: Synchronized,
         frame_pool: Optional[FramePool] = None,
@@ -123,7 +123,7 @@ def produce_capture(
 class VideoCaptureProducer:
     def __init__(
         self,
-        frame_queue: Queue[DataCollection],
+        frame_queue: 'Queue[DataCollection]',
         settings: Optional[CaptureSettings] = None,
         frame_pool: Optional[FramePool] = None,
         skip_frames: bool = True

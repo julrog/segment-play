@@ -53,10 +53,11 @@ class ExceptionCloseData(CloseData):
 
 
 def pipeline_data_generator(
-    input_queue: Queue[DataCollection],
-    output_queue: Queue[DataCollection],
+    input_queue: 'Queue[DataCollection]',
+    output_queue: 'Queue[DataCollection]',
     expected_data: List[Type],
-    timeout: float = 10.0
+    timeout: float = 10.0,
+    receiver_name: Optional[str] = None
 ) -> Generator[DataCollection, None, None]:
     try:
         empty: bool = False
@@ -76,7 +77,11 @@ def pipeline_data_generator(
                     empty_time = time.time()
                     empty = True
                 if empty_time + timeout < time.time():
-                    raise Exception('Pipeline data generator timeout!')
+                    if receiver_name:
+                        raise Exception(
+                            f'Pipeline data generator timeout for {receiver_name}!')  # noqa: E501
+                    else:
+                        raise Exception('Pipeline data generator timeout!')
     except KeyboardInterrupt:  # pragma: no cover
         pass
     except Exception as e:

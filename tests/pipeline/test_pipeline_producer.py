@@ -8,9 +8,9 @@ from tests.pipeline.test_data import TData, TException
 
 
 def test_interruptible() -> None:
-    output_queue: Queue[DataCollection] = Queue()
+    output_queue: 'Queue[DataCollection]' = Queue()
 
-    def generate_data(output_queue: Queue[DataCollection], number: int) -> None:
+    def generate_data(output_queue: 'Queue[DataCollection]', number: int) -> None:
         output_queue.put(DataCollection().add(TData(number)))
         raise TException()
 
