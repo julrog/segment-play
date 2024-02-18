@@ -105,17 +105,17 @@ class Director:
         mirror_masks = []
         tracking_data = data.get(TrackingData)
         segmentation_data = data.get(SegmentationData)
-        for id, masks in enumerate(segmentation_data.masks):
+        for id in range(len(tracking_data.targets)):
             pad_box = tracking_data.get_padded_box(id).astype(np.int32)
             input_box = tracking_data.get_box(id).astype(np.int32)
             track_id = tracking_data.get_tracking_id(id)
             if track_id not in self.settings.id_position_map.keys():
                 self.settings.id_position_map[track_id] = random.random()
 
-            if len(masks) == 0:
+            if segmentation_data.get_mask(id) is None:
                 continue
 
-            mask = masks[0]
+            mask = segmentation_data.get_mask(id)
 
             mirror_p = int(
                 track_id) % 2 == 0 and self.settings.random_people_mirror

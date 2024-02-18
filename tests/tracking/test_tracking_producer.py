@@ -1,6 +1,7 @@
 import logging
 import queue
-from multiprocessing import Queue
+from multiprocessing import Queue, Value
+from multiprocessing.sharedctypes import Synchronized
 from typing import Optional
 
 import numpy as np
@@ -9,8 +10,8 @@ import pytest
 from frame.camera import CaptureSettings
 from frame.producer import FrameData, VideoCaptureProducer
 from frame.shared import FramePool, create_frame_pool
-from pipeline.data import (CloseData, DataCollection, ExceptionCloseData,
-                           clear_queue)
+from pipeline.data import CloseData, DataCollection, ExceptionCloseData
+from pipeline.manager import clear_queue
 from tests.frame.test_frame_producer import check_frame_data
 from tracking.producer import TrackingData, TrackProducer, produce_tracking
 from util.image import create_black_image
@@ -66,6 +67,7 @@ def test_produce_tracking(use_frame_pool: bool) -> None:
     output_queue: 'Queue[DataCollection]' = Queue()
     frame_pool: Optional[FramePool] = FramePool(
         create_black_image((100, 100, 3)), 2) if use_frame_pool else None
+    ready: Synchronized[int] = Value('i', 0)  # type: ignore
 
     input_queue.put(DataCollection().add(
         FrameData(np.zeros((100, 100, 3), dtype=np.uint8))))
@@ -73,7 +75,7 @@ def test_produce_tracking(use_frame_pool: bool) -> None:
         FrameData(np.zeros((100, 100, 3), dtype=np.uint8))))
     input_queue.put(DataCollection().add(CloseData()))
 
-    produce_tracking(input_queue, output_queue,
+    produce_tracking(input_queue, output_queue, ready,
                      skip_frames=False, frame_pool=frame_pool)
 
     assert output_queue.qsize() == 3
@@ -97,12 +99,13 @@ def test_produce_tracking_with_video(
         10, sample_capture_settings) if use_frame_pool else None
     frame_queue: 'Queue[DataCollection]' = Queue()
     tracking_queue: 'Queue[DataCollection]' = Queue()
+    ready: Synchronized[int] = Value('i', 0)  # type: ignore
 
     frame_producer = VideoCaptureProducer(
         frame_queue, sample_capture_settings, frame_pool)
     frame_producer.start()
 
-    produce_tracking(frame_queue, tracking_queue, 1, frame_pool)
+    produce_tracking(frame_queue, tracking_queue, ready, frame_pool)
 
     assert tracking_queue.qsize() == 2
     check_tracking_data(tracking_queue.get(), None, frame_pool)
@@ -114,8 +117,8 @@ def test_produce_tracking_with_video(
     assert not data.has(TrackingData)
 
     frame_producer.stop()
-    clear_queue(frame_queue)
-    clear_queue(tracking_queue)
+    clear_queue(frame_queue, frame_pool)
+    clear_queue(tracking_queue, frame_pool)
 
 
 @pytest.mark.parametrize('use_frame_pool', [False, True])
@@ -133,7 +136,11 @@ def test_producer(
     frame_producer.start()
 
     tracking_producer = TrackProducer(
-        frame_queue, tracking_queue, 1, frame_pool)
+        frame_queue,
+        tracking_queue,
+        frame_pool,
+        down_scale=1.0
+    )
     tracking_producer.start()
 
     data: Optional[DataCollection] = None
@@ -152,14 +159,15 @@ def test_producer(
         frame_pool.free_frame(data.get(FrameData).frame)
 
     frame_producer.stop()
-    tracking_producer.stop()
-    clear_queue(frame_queue)
-    clear_queue(tracking_queue)
+    tracking_producer.join()
+    clear_queue(frame_queue, frame_pool)
+    clear_queue(tracking_queue, frame_pool)
 
 
 def test_produce_tracking_logs(caplog: pytest.LogCaptureFixture) -> None:
     input_queue: 'Queue[DataCollection]' = Queue()
     output_queue: 'Queue[DataCollection]' = Queue()
+    ready: Synchronized[int] = Value('i', 0)  # type: ignore
 
     input_queue.put(DataCollection().add(
         FrameData(np.zeros((100, 100, 3), dtype=np.uint8))))
@@ -172,7 +180,7 @@ def test_produce_tracking_logs(caplog: pytest.LogCaptureFixture) -> None:
     input_queue.put(DataCollection().add(CloseData()))
 
     with caplog.at_level(logging.INFO):
-        produce_tracking(input_queue, output_queue, log_cylces=2)
+        produce_tracking(input_queue, output_queue, ready, log_cylces=2)
 
         assert output_queue.qsize() == 2
         check_tracking_data(output_queue.get(), None)
@@ -190,8 +198,33 @@ def test_produce_tracking_logs(caplog: pytest.LogCaptureFixture) -> None:
             assert log_tuple[2].startswith('Tracking-FPS:')
 
 
-def test_stop_track_producer_early() -> None:
-    frame_queue: 'Queue[DataCollection]' = Queue()
-    tracking_queue: 'Queue[DataCollection]' = Queue()
-    track_producer = TrackProducer(frame_queue, tracking_queue)
-    track_producer.stop()
+def test_stop_producer() -> None:
+    in_queue: 'Queue[DataCollection]' = Queue()
+    out_queue: 'Queue[DataCollection]' = Queue()
+    producer = TrackProducer(in_queue, out_queue)
+    producer.start()
+    producer.stop()
+
+    assert in_queue.empty()
+
+    close_data = out_queue.get()
+    assert isinstance(close_data, DataCollection)
+    assert close_data.is_closed()
+    assert out_queue.empty()
+
+    clear_queue(in_queue)
+    clear_queue(out_queue)
+
+
+def test_stop_producer_early() -> None:
+    in_queue: 'Queue[DataCollection]' = Queue()
+    out_queue: 'Queue[DataCollection]' = Queue()
+    producer = TrackProducer(in_queue, out_queue)
+    producer.stop()
+
+
+def test_join_producer_early() -> None:
+    in_queue: 'Queue[DataCollection]' = Queue()
+    out_queue: 'Queue[DataCollection]' = Queue()
+    producer = TrackProducer(in_queue, out_queue)
+    producer.join()

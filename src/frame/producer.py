@@ -63,7 +63,7 @@ def free_output_queue(
 def produce_capture(
         output_queue: 'Queue[DataCollection]',
         settings: Optional[CaptureSettings],
-        stop_condition: Synchronized,
+        stop_condition: 'Synchronized[int]',
         frame_pool: Optional[FramePool] = None,
         skip_frames: bool = True,
 ) -> None:

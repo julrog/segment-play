@@ -1,7 +1,8 @@
 import logging
 import queue
 import time
-from multiprocessing import Queue
+from multiprocessing import Queue, Value
+from multiprocessing.sharedctypes import Synchronized
 from typing import Optional
 
 import numpy as np
@@ -10,8 +11,8 @@ import pytest
 from frame.camera import CaptureSettings
 from frame.producer import FrameData, VideoCaptureProducer
 from frame.shared import FramePool, create_frame_pool
-from pipeline.data import (CloseData, DataCollection, ExceptionCloseData,
-                           clear_queue)
+from pipeline.data import CloseData, DataCollection, ExceptionCloseData
+from pipeline.manager import clear_queue
 from pose.pose import BODY_POINTS, DEFAULT_IMPORTANT_LANDMARKS, Pose
 from pose.producer import PoseData, PoseProducer, produce_pose
 from segmentation.base import BodyPartSegmentation
@@ -120,6 +121,8 @@ def test_produce_pose(
     frame_queue: 'Queue[DataCollection]' = Queue()
     tracking_queue: 'Queue[DataCollection]' = Queue()
     pose_queue: 'Queue[DataCollection]' = Queue()
+    ready_tracking: Synchronized[int] = Value('i', 0)  # type: ignore
+    ready: Synchronized[int] = Value('i', 0)  # type: ignore
 
     for _ in range(3):
         frame_queue.put(DataCollection().add(
@@ -128,12 +131,14 @@ def test_produce_pose(
         FrameData(np.zeros((1280, 1920, 3), dtype=np.uint8), frame_pool)))
     frame_queue.put(DataCollection().add(CloseData()))
 
-    produce_tracking(frame_queue, tracking_queue, 1,
+    produce_tracking(frame_queue, tracking_queue, ready_tracking,
                      frame_pool, skip_frames=False)
 
-    produce_pose(tracking_queue, pose_queue, 1, frame_pool, skip_frames=False)
+    produce_pose(tracking_queue, pose_queue, ready,
+                 frame_pool, skip_frames=False)
 
     time.sleep(0.1)
+    assert ready.value == 1
     assert frame_queue.empty()
     assert tracking_queue.empty()
     assert pose_queue.qsize() == 5
@@ -149,9 +154,9 @@ def test_produce_pose(
         ExceptionCloseData).exception
     assert not data.has(PoseData)
 
-    clear_queue(frame_queue)
-    clear_queue(tracking_queue)
-    clear_queue(pose_queue)
+    clear_queue(frame_queue, frame_pool)
+    clear_queue(tracking_queue, frame_pool)
+    clear_queue(pose_queue, frame_pool)
 
 
 # TODO: check why it fails with not using frame pool
@@ -165,9 +170,14 @@ def test_produce_pose_with_video(
     frame_queue: 'Queue[DataCollection]' = Queue()
     tracking_queue: 'Queue[DataCollection]' = Queue()
     pose_queue: 'Queue[DataCollection]' = Queue()
+    ready: Synchronized[int] = Value('i', 0)  # type: ignore
 
     tracking_producer = TrackProducer(
-        frame_queue, tracking_queue, 1, frame_pool, skip_frames=False)
+        frame_queue,
+        tracking_queue,
+        frame_pool,
+        skip_frames=False
+    )
     tracking_producer.start()
 
     frame_producer = VideoCaptureProducer(
@@ -178,8 +188,10 @@ def test_produce_pose_with_video(
     )
     frame_producer.start()
 
-    produce_pose(tracking_queue, pose_queue, 1, frame_pool)
+    produce_pose(tracking_queue, pose_queue, ready,
+                 frame_pool, model_complexity=1)
 
+    assert ready.value == 1
     assert pose_queue.qsize() == 2
     check_pose_data(pose_queue.get(), None, frame_pool, False)
 
@@ -191,10 +203,10 @@ def test_produce_pose_with_video(
     assert not data.has(PoseData)
 
     frame_producer.stop()
-    tracking_producer.stop()
-    clear_queue(frame_queue)
-    clear_queue(tracking_queue)
-    clear_queue(pose_queue)
+    tracking_producer.join()
+    clear_queue(frame_queue, frame_pool)
+    clear_queue(tracking_queue, frame_pool)
+    clear_queue(pose_queue, frame_pool)
 
 
 @pytest.mark.parametrize('use_frame_pool', [False, True])
@@ -209,11 +221,15 @@ def test_producer(
     pose_queue: 'Queue[DataCollection]' = Queue()
 
     pose_producer = PoseProducer(
-        tracking_queue, pose_queue, 1, frame_pool, skip_frames=False)
+        tracking_queue, pose_queue, frame_pool, skip_frames=False)
     pose_producer.start()
 
     tracking_producer = TrackProducer(
-        frame_queue, tracking_queue, 1, frame_pool, skip_frames=False)
+        frame_queue,
+        tracking_queue,
+        frame_pool,
+        skip_frames=False
+    )
     tracking_producer.start()
 
     frame_producer = VideoCaptureProducer(
@@ -238,16 +254,17 @@ def test_producer(
         frame_pool.free_frame(data.get(FrameData).frame)
 
     frame_producer.stop()
-    tracking_producer.stop()
-    pose_producer.stop()
-    clear_queue(frame_queue)
-    clear_queue(tracking_queue)
-    clear_queue(pose_queue)
+    tracking_producer.join()
+    pose_producer.join()
+    clear_queue(frame_queue, frame_pool)
+    clear_queue(tracking_queue, frame_pool)
+    clear_queue(pose_queue, frame_pool)
 
 
 def test_produce_pose_logs(caplog: pytest.LogCaptureFixture) -> None:
     input_queue: 'Queue[DataCollection]' = Queue()
     output_queue: 'Queue[DataCollection]' = Queue()
+    ready: Synchronized[int] = Value('i', 0)  # type: ignore
 
     for _ in range(4):
         input_queue.put(DataCollection().add(
@@ -262,7 +279,7 @@ def test_produce_pose_logs(caplog: pytest.LogCaptureFixture) -> None:
     input_queue.put(DataCollection().add(CloseData()))
 
     with caplog.at_level(logging.INFO):
-        produce_pose(input_queue, output_queue, log_cylces=2)
+        produce_pose(input_queue, output_queue, ready, log_cylces=2)
 
         assert output_queue.qsize() == 2
         check_pose_data(output_queue.get(), None, None, False)
@@ -280,8 +297,37 @@ def test_produce_pose_logs(caplog: pytest.LogCaptureFixture) -> None:
             assert log_tuple[2].startswith('Pose-FPS:')
 
 
-def test_stop_pose_producer_early() -> None:
-    frame_queue: 'Queue[DataCollection]' = Queue()
-    pose_queue: 'Queue[DataCollection]' = Queue()
-    track_producer = PoseProducer(frame_queue, pose_queue)
-    track_producer.stop()
+def test_stop_producer() -> None:
+    in_queue: 'Queue[DataCollection]' = Queue()
+    out_queue: 'Queue[DataCollection]' = Queue()
+    producer = PoseProducer(in_queue, out_queue)
+    producer.start()
+
+    while producer.ready.value != 1:
+        time.sleep(0.1)
+
+    producer.stop()
+
+    assert in_queue.empty()
+
+    close_data = out_queue.get()
+    assert isinstance(close_data, DataCollection)
+    assert close_data.is_closed()
+    assert out_queue.empty()
+
+    clear_queue(in_queue)
+    clear_queue(out_queue)
+
+
+def test_stop_producer_early() -> None:
+    in_queue: 'Queue[DataCollection]' = Queue()
+    out_queue: 'Queue[DataCollection]' = Queue()
+    producer = PoseProducer(in_queue, out_queue)
+    producer.stop()
+
+
+def test_join_producer_early() -> None:
+    in_queue: 'Queue[DataCollection]' = Queue()
+    out_queue: 'Queue[DataCollection]' = Queue()
+    producer = PoseProducer(in_queue, out_queue)
+    producer.join()

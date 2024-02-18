@@ -20,6 +20,7 @@ from frame.producer import FrameData, VideoCaptureProducer
 from frame.shared import create_frame_pool
 from ocsort.timer import Timer
 from pipeline.data import DataCollection
+from pipeline.manager import clear_queue
 from pose.pose import Pose, PoseRenderer
 from tracking.producer import TrackingData, TrackProducer
 from util.visualize import show_box
@@ -43,7 +44,7 @@ def main(args: Dict) -> None:
 
     tracking_queue: 'Queue[DataCollection]' = Queue()
     tracker = TrackProducer(frame_queue, tracking_queue,
-                            down_scale, frame_pool)
+                            frame_pool, down_scale=down_scale)
 
     timer = Timer()
     cap = VideoCaptureProducer(frame_queue, camera_settings, frame_pool)
@@ -122,8 +123,10 @@ def main(args: Dict) -> None:
 
     cv2.destroyAllWindows()
     cap.stop()
-    tracker.stop()
+    tracker.join()
     pose.close()
+    clear_queue(frame_queue, frame_pool)
+    clear_queue(tracking_queue, frame_pool)
     print('Closing')
 
 

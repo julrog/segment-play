@@ -12,7 +12,8 @@ from frame.camera import CaptureSettings
 from frame.producer import (FrameData, VideoCaptureProducer, free_output_queue,
                             produce_capture)
 from frame.shared import FramePool, create_frame_pool
-from pipeline.data import DataCollection, ExceptionCloseData, clear_queue
+from pipeline.data import DataCollection, ExceptionCloseData
+from pipeline.manager import clear_queue
 
 
 def check_frame_data(
@@ -111,7 +112,7 @@ def test_slow_produce_capture(
     assert not data.has(ExceptionCloseData), data.get(
         ExceptionCloseData).exception
     assert not data.has(FrameData)
-    clear_queue(frame_queue)
+    clear_queue(frame_queue, frame_pool)
 
 
 @pytest.mark.parametrize('use_frame_pool', [False, True])
@@ -143,7 +144,7 @@ def test_producer(
         frame_pool.free_frame(data.get(FrameData).frame)
 
     frame_producer.stop()
-    clear_queue(frame_queue)
+    clear_queue(frame_queue, frame_pool)
 
 
 # TODO: check why it fails with not using frame pool (size 0)
@@ -220,7 +221,7 @@ def test_producer_no_frame_skips(
     assert frame_queue.empty()
 
     frame_producer.stop()
-    clear_queue(frame_queue)
+    clear_queue(frame_queue, frame_pool)
 
 
 def test_producer_no_frame_skips_queue_size_limit_on_close(
@@ -281,7 +282,7 @@ def test_producer_no_frame_skips_queue_size_limit_on_close(
     assert frame_queue.empty()
 
     frame_producer.stop()
-    clear_queue(frame_queue)
+    clear_queue(frame_queue, frame_pool)
 
 
 def test_producer_early_stop(

@@ -1,7 +1,8 @@
 import logging
 import queue
 import time
-from multiprocessing import Queue
+from multiprocessing import Queue, Value
+from multiprocessing.sharedctypes import Synchronized
 from typing import Optional
 
 import numpy as np
@@ -10,8 +11,8 @@ import pytest
 from frame.camera import CaptureSettings
 from frame.producer import FrameData, VideoCaptureProducer
 from frame.shared import FramePool, create_frame_pool
-from pipeline.data import (CloseData, DataCollection, ExceptionCloseData,
-                           clear_queue)
+from pipeline.data import CloseData, DataCollection, ExceptionCloseData
+from pipeline.manager import clear_queue
 from pose.producer import PoseData
 from segmentation.base import BodyPartSegmentation
 from segmentation.mobile_sam import MobileSam
@@ -156,6 +157,8 @@ def test_produce_segmentation(
     frame_queue: 'Queue[DataCollection]' = Queue()
     tracking_queue: 'Queue[DataCollection]' = Queue()
     segmentation_queue: 'Queue[DataCollection]' = Queue()
+    ready_tracking: Synchronized[int] = Value('i', 0)  # type: ignore
+    ready: Synchronized[int] = Value('i', 0)  # type: ignore
 
     for _ in range(3):
         frame_queue.put(DataCollection().add(
@@ -164,16 +167,17 @@ def test_produce_segmentation(
         FrameData(np.zeros((1280, 1920, 3), dtype=np.uint8), frame_pool)))
     frame_queue.put(DataCollection().add(CloseData()))
 
-    produce_tracking(frame_queue, tracking_queue, 1,
+    produce_tracking(frame_queue, tracking_queue, ready_tracking,
                      frame_pool, skip_frames=False)
 
     produce_segmentation(
         tracking_queue,
         segmentation_queue,
-        down_scale,
-        fast_segmentation,
+        ready,
         frame_pool,
-        skip_frames=False
+        skip_frames=False,
+        down_scale=down_scale,
+        fast=fast_segmentation,
     )
 
     time.sleep(0.1)
@@ -192,14 +196,14 @@ def test_produce_segmentation(
         ExceptionCloseData).exception
     assert not data.has(SegmentationData)
 
-    clear_queue(frame_queue)
-    clear_queue(tracking_queue)
-    clear_queue(segmentation_queue)
+    clear_queue(frame_queue, frame_pool)
+    clear_queue(tracking_queue, frame_pool)
+    clear_queue(segmentation_queue, frame_pool)
 
 
 # TODO: check why it fails with not using frame pool
 @pytest.mark.parametrize('use_frame_pool', [True])
-def test_produce_pose_with_video(
+def test_produce_segmentation_with_video(
     short_sample_capture_settings: CaptureSettings,
     use_frame_pool: bool
 ) -> None:
@@ -208,9 +212,14 @@ def test_produce_pose_with_video(
     frame_queue: 'Queue[DataCollection]' = Queue()
     tracking_queue: 'Queue[DataCollection]' = Queue()
     segmentation_queue: 'Queue[DataCollection]' = Queue()
+    ready: Synchronized[int] = Value('i', 0)  # type: ignore
 
     tracking_producer = TrackProducer(
-        frame_queue, tracking_queue, 1, frame_pool, skip_frames=False)
+        frame_queue,
+        tracking_queue,
+        frame_pool,
+        skip_frames=False
+    )
     tracking_producer.start()
 
     frame_producer = VideoCaptureProducer(
@@ -224,9 +233,10 @@ def test_produce_pose_with_video(
     produce_segmentation(
         tracking_queue,
         segmentation_queue,
-        1,
-        True,
-        frame_pool
+        ready,
+        frame_pool,
+        down_scale=1,
+        fast=True,
     )
 
     assert segmentation_queue.qsize() == 2
@@ -239,10 +249,10 @@ def test_produce_pose_with_video(
     assert not data.has(SegmentationData)
 
     frame_producer.stop()
-    tracking_producer.stop()
-    clear_queue(frame_queue)
-    clear_queue(tracking_queue)
-    clear_queue(segmentation_queue)
+    tracking_producer.join()
+    clear_queue(frame_queue, frame_pool)
+    clear_queue(tracking_queue, frame_pool)
+    clear_queue(segmentation_queue, frame_pool)
 
 
 @pytest.mark.parametrize('use_frame_pool', [False, True])
@@ -259,15 +269,19 @@ def test_producer(
     segmentation_producer = SegmentProducer(
         tracking_queue,
         segmentation_queue,
-        1,
-        True,
         frame_pool,
-        skip_frames=False
+        skip_frames=False,
+        down_scale=1,
+        fast=True
     )
     segmentation_producer.start()
 
     tracking_producer = TrackProducer(
-        frame_queue, tracking_queue, 1, frame_pool, skip_frames=False)
+        frame_queue,
+        tracking_queue,
+        frame_pool,
+        skip_frames=False
+    )
     tracking_producer.start()
 
     frame_producer = VideoCaptureProducer(
@@ -297,16 +311,17 @@ def test_producer(
         frame_pool.free_frame(data.get(FrameData).frame)
 
     frame_producer.stop()
-    tracking_producer.stop()
-    segmentation_producer.stop()
-    clear_queue(frame_queue)
-    clear_queue(tracking_queue)
-    clear_queue(segmentation_queue)
+    tracking_producer.join()
+    segmentation_producer.join()
+    clear_queue(frame_queue, frame_pool)
+    clear_queue(tracking_queue, frame_pool)
+    clear_queue(segmentation_queue, frame_pool)
 
 
 def test_produce_segmentation_logs(caplog: pytest.LogCaptureFixture) -> None:
     input_queue: 'Queue[DataCollection]' = Queue()
     output_queue: 'Queue[DataCollection]' = Queue()
+    ready: Synchronized[int] = Value('i', 0)  # type: ignore
 
     for _ in range(4):
         input_queue.put(DataCollection().add(
@@ -321,7 +336,7 @@ def test_produce_segmentation_logs(caplog: pytest.LogCaptureFixture) -> None:
     input_queue.put(DataCollection().add(CloseData()))
 
     with caplog.at_level(logging.INFO):
-        produce_segmentation(input_queue, output_queue, log_cylces=2)
+        produce_segmentation(input_queue, output_queue, ready, log_cylces=2)
 
         assert output_queue.qsize() == 2
         check_segmentation_data(output_queue.get(), None, None)
@@ -339,8 +354,37 @@ def test_produce_segmentation_logs(caplog: pytest.LogCaptureFixture) -> None:
             assert log_tuple[2].startswith('Segmentation-FPS:')
 
 
-def test_stop_pose_producer_early() -> None:
-    frame_queue: 'Queue[DataCollection]' = Queue()
-    pose_queue: 'Queue[DataCollection]' = Queue()
-    track_producer = SegmentProducer(frame_queue, pose_queue)
-    track_producer.stop()
+def test_stop_producer() -> None:
+    in_queue: 'Queue[DataCollection]' = Queue()
+    out_queue: 'Queue[DataCollection]' = Queue()
+    producer = SegmentProducer(in_queue, out_queue)
+    producer.start()
+
+    while producer.ready.value != 1:
+        time.sleep(0.1)
+
+    producer.stop()
+
+    assert in_queue.empty()
+
+    close_data = out_queue.get()
+    assert isinstance(close_data, DataCollection)
+    assert close_data.is_closed()
+    assert out_queue.empty()
+
+    clear_queue(in_queue)
+    clear_queue(out_queue)
+
+
+def test_stop_producer_early() -> None:
+    in_queue: 'Queue[DataCollection]' = Queue()
+    out_queue: 'Queue[DataCollection]' = Queue()
+    producer = SegmentProducer(in_queue, out_queue)
+    producer.stop()
+
+
+def test_join_producer_early() -> None:
+    in_queue: 'Queue[DataCollection]' = Queue()
+    out_queue: 'Queue[DataCollection]' = Queue()
+    producer = SegmentProducer(in_queue, out_queue)
+    producer.join()

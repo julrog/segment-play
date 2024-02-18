@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 import time
-from multiprocessing import Process, Queue
+from multiprocessing import Queue
+from multiprocessing.sharedctypes import Synchronized
 from typing import List, Optional
 
 import numpy as np
@@ -10,8 +11,9 @@ import numpy as np
 from frame.producer import FrameData, free_output_queue
 from frame.shared import FramePool
 from ocsort.timer import Timer
-from pipeline.data import (BaseData, CloseData, DataCollection,
-                           ExceptionCloseData, pipeline_data_generator)
+from pipeline.data import (BaseData, DataCollection, ExceptionCloseData,
+                           pipeline_data_generator)
+from pipeline.producer import Producer
 from tracking.tracking import Tracker
 
 
@@ -36,15 +38,17 @@ class TrackingData(BaseData):
 def produce_tracking(
     input_queue: 'Queue[DataCollection]',
     output_queue: 'Queue[DataCollection]',
-    down_scale: float = 1.0,
+    ready: 'Synchronized[int]',
     frame_pool: Optional[FramePool] = None,
     skip_frames: bool = True,
-    log_cylces: int = 100
+    log_cylces: int = 100,
+    down_scale: float = 1.0,
 ) -> None:
     try:
         reduce_frame_discard_timer = 0.0
         timer = Timer()
         tracker = Tracker(down_scale)
+        ready.value = 1
 
         for data in pipeline_data_generator(
             input_queue,
@@ -78,37 +82,24 @@ def produce_tracking(
     input_queue.cancel_join_thread()
 
 
-class TrackProducer:
+class TrackProducer(Producer):
     def __init__(
         self,
             input_queue: 'Queue[DataCollection]',
             output_queue: 'Queue[DataCollection]',
-            down_scale: float = 1.0,
             frame_pool: Optional[FramePool] = None,
             skip_frames: bool = True,
-            log_cycles: int = 100
+            log_cycles: int = 100,
+            down_scale: float = 1.0,
     ) -> None:
-        self.process: Optional[Process] = None
-        self.input_queue = input_queue
-        self.output_queue = output_queue
-        self.down_scale = down_scale
-        self.frame_pool = frame_pool
-        self.skip_frames = skip_frames
-        self.log_cycles = log_cycles
+        super().__init__(
+            input_queue,
+            output_queue,
+            frame_pool,
+            skip_frames,
+            log_cycles,
+            down_scale
+        )
 
     def start(self) -> None:
-        self.process = Process(target=produce_tracking, args=(
-            self.input_queue,
-            self.output_queue,
-            self.down_scale,
-            self.frame_pool,
-            self.skip_frames,
-            self.log_cycles
-        ))
-        self.process.start()
-
-    def stop(self) -> None:
-        self.input_queue.put(DataCollection().add(CloseData()))
-        if self.process:
-            time.sleep(1)
-            self.process.kill()
+        self.base_start(produce_tracking)

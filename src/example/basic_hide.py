@@ -19,6 +19,7 @@ from frame.producer import FrameData, VideoCaptureProducer
 from frame.shared import create_frame_pool
 from ocsort.timer import Timer
 from pipeline.data import DataCollection
+from pipeline.manager import clear_queue
 from segmentation.mobile_sam import MobileSam
 from segmentation.sam import Sam
 from tracking.producer import TrackingData, TrackProducer
@@ -51,7 +52,7 @@ def main(args: Dict) -> None:
 
     tracking_queue: 'Queue[DataCollection]' = Queue()
     tracker = TrackProducer(frame_queue, tracking_queue,
-                            down_scale, frame_pool)
+                            frame_pool, down_scale=down_scale)
 
     timer = Timer()
     cap = VideoCaptureProducer(frame_queue, camera_settings, frame_pool)
@@ -99,6 +100,7 @@ def main(args: Dict) -> None:
 
                 cv2.imshow('application', cv2.cvtColor(
                     image, cv2.COLOR_RGB2BGR))
+
                 if frame_pool:
                     frame_pool.free_frame(data.get(FrameData).frame)
 
@@ -111,9 +113,12 @@ def main(args: Dict) -> None:
     except KeyboardInterrupt:
         pass
 
-    cv2.destroyAllWindows()
     cap.stop()
-    tracker.stop()
+    tracker.join()
+    clear_queue(frame_queue, frame_pool)
+    clear_queue(tracking_queue, frame_pool)
+    frame_pool.close()
+    cv2.destroyAllWindows()
     print('Closing')
 
 

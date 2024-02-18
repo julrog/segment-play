@@ -4,7 +4,7 @@ from multiprocessing.sharedctypes import Synchronized
 from typing import Generator, List, Optional
 
 from frame.camera import CaptureSettings
-from frame.producer import VideoCaptureProducer
+from frame.producer import FrameData, VideoCaptureProducer
 from frame.shared import FramePool
 from pipeline.data import DataCollection
 from pose.producer import PoseProducer
@@ -45,9 +45,13 @@ class FrameProcessingPipeline:
         ]
         if self.use_pose:
             self.pose: PoseProducer = PoseProducer(
-                self.tracking_queue, self.pose_queue, frame_pool=frame_pool)
+                self.tracking_queue, self.pose_queue, frame_pool)
         self.tracker: TrackProducer = TrackProducer(
-            self.frame_queue, self.tracking_queue, down_scale, frame_pool)
+            self.frame_queue,
+            self.tracking_queue,
+            frame_pool,
+            down_scale=down_scale
+        )
         self.cap = VideoCaptureProducer(
             self.frame_queue, camera_settings, frame_pool)
 
@@ -68,8 +72,27 @@ class FrameProcessingPipeline:
 
     def stop(self) -> None:
         self.cap.stop()
-        self.tracker.stop()
+        self.tracker.join()
         if self.use_pose:
-            self.pose.stop()
+            self.pose.join()
         for segment in self.segments:
             segment.stop()
+
+
+def clear_queue(
+        clear_queue: Queue,
+        frame_pool: Optional[FramePool] = None
+) -> None:
+    try:
+        if not frame_pool:
+            while True:
+                clear_queue.get_nowait()
+        else:
+            while True:
+                data: DataCollection = clear_queue.get_nowait()
+                if data.has(FrameData) \
+                        and data.get(FrameData).using_shared_pool:
+                    frame_pool.free_frame(data.get(FrameData).frame)
+    except queue.Empty:
+        pass
+    clear_queue.close()
