@@ -56,7 +56,7 @@ def pipeline_data_generator(
     input_queue: 'Queue[DataCollection]',
     output_queue: 'Queue[DataCollection]',
     expected_data: List[Type],
-    timeout: float = 10.0,
+    timeout: float = 100000000.0,
     receiver_name: Optional[str] = None
 ) -> Generator[DataCollection, None, None]:
     try:

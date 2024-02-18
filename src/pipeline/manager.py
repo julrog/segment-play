@@ -21,7 +21,8 @@ class FrameProcessingPipeline:
         camera_settings: Optional[CaptureSettings] = None,
         frame_pool: Optional[FramePool] = None,
         specific_bodypart: Optional[Synchronized] = None,
-        use_pose: bool = False
+        use_pose: bool = False,
+        skip_capture_frames: bool = True
     ) -> None:
         self.use_pose = use_pose
 
@@ -36,10 +37,10 @@ class FrameProcessingPipeline:
             SegmentProducer(
                 queue_for_segmentation,
                 self.segment_queue,
-                down_scale,
-                fast,
                 frame_pool,
-                specific_bodypart
+                down_scale=down_scale,
+                fast=fast,
+                specific_bodypart=specific_bodypart
             )
             for _ in range(segment_processes)
         ]
@@ -53,7 +54,11 @@ class FrameProcessingPipeline:
             down_scale=down_scale
         )
         self.cap = VideoCaptureProducer(
-            self.frame_queue, camera_settings, frame_pool)
+            self.frame_queue,
+            camera_settings,
+            frame_pool,
+            skip_frames=skip_capture_frames
+        )
 
     def start(self) -> None:
         self.cap.start()
