@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from multiprocessing import Queue
+from multiprocessing import Queue, Value
 from multiprocessing.sharedctypes import Synchronized
 from typing import Any, List, Optional, Tuple
 
@@ -137,7 +137,8 @@ class PoseProducer(Producer):
         log_cycles: int = 100,
         model_complexity: int = 1,
     ) -> None:
-        super().__init__(input_queue, output_queue, frame_pool,
+        self.ready: Synchronized[int] = Value('i', 0)  # type: ignore
+        super().__init__(input_queue, output_queue, self.ready, frame_pool,
                          skip_frames, log_cycles, model_complexity)
 
     def start(self) -> None:

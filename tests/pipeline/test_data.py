@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from multiprocessing import Process, Queue
 
@@ -7,6 +8,7 @@ import pytest
 
 from pipeline.data import (MISSING_DATA_MESSAGE, BaseData, CloseData,
                            DataCollection, ExceptionCloseData,
+                           pipeline_data_and_empty_generator,
                            pipeline_data_generator)
 
 
@@ -140,3 +142,21 @@ def test_pipeline_data_generator_timeout(timeout_name: str) -> None:
     else:
         assert str(outdata.get(
             ExceptionCloseData).exception) == 'Pipeline data generator timeout!'  # noqa: E501
+
+
+def test_pipeline_data_generator_timeout_no_output(
+    caplog: pytest.LogCaptureFixturer
+) -> None:
+    input_queue: 'Queue[DataCollection]' = Queue(4)
+
+    with caplog.at_level(logging.ERROR):
+        for _ in pipeline_data_and_empty_generator(
+                input_queue, None, [TData], 0.05, 'Test'):
+            pass
+        log_tuples = caplog.record_tuples
+        assert len(log_tuples) == 1
+        for log_tuple in log_tuples:
+            assert log_tuple[0] == 'root'
+            assert log_tuple[1] == logging.ERROR
+            assert log_tuple[2].startswith(
+                'Pipeline data generator timeout for Test!')

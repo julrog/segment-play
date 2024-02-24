@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from multiprocessing import Queue
+from multiprocessing import Queue, Value
 from multiprocessing.sharedctypes import Synchronized
 from typing import List, Optional
 
@@ -195,9 +195,11 @@ class SegmentProducer(Producer):
         fast: bool = True,
         specific_bodypart: Optional[Synchronized[int]] = None,
     ) -> None:
+        self.ready: Synchronized[int] = Value('i', 0)  # type: ignore
         super().__init__(
             input_queue,
             output_queue,
+            self.ready,
             frame_pool,
             skip_frames,
             log_cycles,

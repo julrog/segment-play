@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import queue
 import time
 from multiprocessing import Queue
@@ -52,13 +53,13 @@ class ExceptionCloseData(CloseData):
         self.exception = exception
 
 
-def pipeline_data_generator(
+def pipeline_data_and_empty_generator(
     input_queue: 'Queue[DataCollection]',
-    output_queue: 'Queue[DataCollection]',
+    output_queue: 'Optional[Queue[DataCollection]]',
     expected_data: List[Type],
     timeout: float = 100000000.0,
-    receiver_name: Optional[str] = None
-) -> Generator[DataCollection, None, None]:
+    receiver_name: Optional[str] = None,
+) -> Generator[Optional[DataCollection], None, None]:
     try:
         empty: bool = False
         empty_time: float = time.time()
@@ -67,7 +68,8 @@ def pipeline_data_generator(
                 data = input_queue.get(timeout=0.01)
                 empty = False
                 if data.is_closed():
-                    output_queue.put(data)
+                    if output_queue:
+                        output_queue.put(data)
                     break
                 assert all(data.has(ed)
                            for ed in expected_data), MISSING_DATA_MESSAGE
@@ -82,7 +84,29 @@ def pipeline_data_generator(
                             f'Pipeline data generator timeout for {receiver_name}!')  # noqa: E501
                     else:
                         raise Exception('Pipeline data generator timeout!')
+                yield None
     except KeyboardInterrupt:  # pragma: no cover
         pass
     except Exception as e:
-        output_queue.put(DataCollection().add(ExceptionCloseData(e)))
+        if output_queue:
+            output_queue.put(DataCollection().add(ExceptionCloseData(e)))
+        else:
+            logging.error(e)
+
+
+def pipeline_data_generator(
+    input_queue: 'Queue[DataCollection]',
+    output_queue: 'Optional[Queue[DataCollection]]',
+    expected_data: List[Type],
+    timeout: float = 100000000.0,
+    receiver_name: Optional[str] = None,
+) -> Generator[DataCollection, None, None]:
+    for data in pipeline_data_and_empty_generator(
+        input_queue,
+        output_queue,
+        expected_data,
+        timeout,
+        receiver_name
+    ):
+        if data:
+            yield data
