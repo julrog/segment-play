@@ -26,7 +26,7 @@ def test_filter_old_frames(cleanup_delay: float) -> None:
     for i in range(number):
         timing = 0.1 + 0.1 * i
         frame_data.append(
-            FrameData(np.zeros((100, 100, 3), dtype=np.uint8), frame_pool))
+            FrameData(create_black_image((100, 100, 3)), frame_pool))
         cleanup_list.append((frame_data[-1].frame, timing))
 
     assert frame_pool.free_frames.qsize() == 0
@@ -51,7 +51,7 @@ def test_filter_frames_limit(limit: int, frames: int) -> None:
     cleanup_list: List[Tuple[int, float]] = []
     for i in range(frames):
         frame_data.append(
-            FrameData(np.zeros((100, 100, 3), dtype=np.uint8), frame_pool))
+            FrameData(create_black_image((100, 100, 3)), frame_pool))
         cleanup_list.append((frame_data[-1].frame, 0.1 * i * (-1)**i))
 
     assert frame_pool.free_frames.qsize() == 0
@@ -70,11 +70,11 @@ def test_clean_frame() -> None:
         create_black_image((100, 100, 3)), 2)
 
     input_queue.put(DataCollection().add(
-        FrameData(np.zeros((100, 100, 3), dtype=np.uint8), frame_pool)))
+        FrameData(create_black_image((100, 100, 3)), frame_pool)))
     input_queue.put(DataCollection().add(
-        FrameData(np.zeros((100, 100, 3), dtype=np.uint8), frame_pool)))
+        FrameData(create_black_image((100, 100, 3)), frame_pool)))
     input_queue.put(DataCollection().add(
-        FrameData(np.zeros((100, 100, 3), dtype=np.uint8))))
+        FrameData(create_black_image((100, 100, 3)))))
     input_queue.put(DataCollection().add(CloseData()))
 
     clean_frame(input_queue, frame_pool)
@@ -89,9 +89,9 @@ def test_clean_frame_early_close() -> None:
         create_black_image((100, 100, 3)), 2)
 
     input_queue.put(DataCollection().add(
-        FrameData(np.zeros((100, 100, 3), dtype=np.uint8), frame_pool)))
+        FrameData(create_black_image((100, 100, 3)), frame_pool)))
     input_queue.put(DataCollection().add(
-        FrameData(np.zeros((100, 100, 3), dtype=np.uint8), frame_pool)))
+        FrameData(create_black_image((100, 100, 3)), frame_pool)))
     input_queue.put(DataCollection().add(CloseData()))
 
     clean_frame(input_queue, frame_pool, cleanup_delay=0.1, limit=1)

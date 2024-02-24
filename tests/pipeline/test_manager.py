@@ -1,7 +1,6 @@
 from multiprocessing import Queue
 from typing import List
 
-import numpy as np
 import pytest
 
 from frame.camera import CaptureSettings
@@ -12,6 +11,7 @@ from pipeline.manager import FrameProcessingPipeline, clear_queue
 from pose.producer import PoseData
 from segmentation.producer import SegmentationData
 from tracking.producer import TrackingData
+from util.image import create_black_image
 
 
 @pytest.mark.parametrize('use_pose', [True, False])
@@ -64,7 +64,7 @@ def test_clear_queue_without_frame_pool() -> None:
 def test_clear_queue_with_frame_pool(
     frame_data: bool
 ) -> None:
-    image = np.zeros((100, 100, 3), dtype=np.uint8)
+    image = create_black_image((100, 100, 3))
 
     frame_pool = FramePool(image, 2)
     queue: 'Queue[DataCollection]' = Queue()

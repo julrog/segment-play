@@ -70,9 +70,9 @@ def test_produce_tracking(use_frame_pool: bool) -> None:
     ready: Synchronized[int] = Value('i', 0)  # type: ignore
 
     input_queue.put(DataCollection().add(
-        FrameData(np.zeros((100, 100, 3), dtype=np.uint8))))
+        FrameData(create_black_image((100, 100, 3)))))
     input_queue.put(DataCollection().add(
-        FrameData(np.zeros((100, 100, 3), dtype=np.uint8))))
+        FrameData(create_black_image((100, 100, 3)))))
     input_queue.put(DataCollection().add(CloseData()))
 
     produce_tracking(input_queue, output_queue, ready,
@@ -170,13 +170,13 @@ def test_produce_tracking_logs(caplog: pytest.LogCaptureFixture) -> None:
     ready: Synchronized[int] = Value('i', 0)  # type: ignore
 
     input_queue.put(DataCollection().add(
-        FrameData(np.zeros((100, 100, 3), dtype=np.uint8))))
+        FrameData(create_black_image((100, 100, 3)))))
     input_queue.put(DataCollection().add(
-        FrameData(np.zeros((100, 100, 3), dtype=np.uint8))))
+        FrameData(create_black_image((100, 100, 3)))))
     input_queue.put(DataCollection().add(
-        FrameData(np.zeros((100, 100, 3), dtype=np.uint8))))
+        FrameData(create_black_image((100, 100, 3)))))
     input_queue.put(DataCollection().add(
-        FrameData(np.zeros((100, 100, 3), dtype=np.uint8))))
+        FrameData(create_black_image((100, 100, 3)))))
     input_queue.put(DataCollection().add(CloseData()))
 
     with caplog.at_level(logging.INFO):

@@ -80,7 +80,7 @@ def test_close() -> None:
     pose = Pose()
     pose.close()
     with pytest.raises(AssertionError):
-        pose.predict(np.zeros((100, 100, 3), dtype=np.uint8))
+        pose.predict(create_black_image((100, 100, 3)))
 
 
 def test_no_detection(pose: Pose) -> None:

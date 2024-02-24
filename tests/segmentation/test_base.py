@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from segmentation.base import Segmentation
+from util.image import create_black_image
 
 
 @pytest.fixture
@@ -17,13 +18,13 @@ def test_get_image_embedding(segmentation: Segmentation) -> None:
 
 
 def test_set_image(segmentation: Segmentation) -> None:
-    image: np.ndarray = np.zeros((100, 100, 3), dtype=np.uint8)
+    image: np.ndarray = create_black_image((100, 100, 3))
     with pytest.raises(AttributeError):
         segmentation.set_image(image)
 
 
 def test_prepare_prompts(segmentation: Segmentation) -> None:
-    image: np.ndarray = np.zeros((100, 100, 3), dtype=np.uint8)
+    image: np.ndarray = create_black_image((100, 100, 3))
     segmentation.prepare_prompts(image)
     assert True
 

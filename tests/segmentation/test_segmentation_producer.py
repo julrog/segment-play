@@ -21,6 +21,7 @@ from segmentation.producer import (SegmentationData, SegmentProducer,
                                    segmentation_calculation)
 from tests.tracking.test_tracking_producer import check_tracking_data
 from tracking.producer import TrackingData, TrackProducer, produce_tracking
+from util.image import create_black_image
 
 
 def check_segmentation_data_for_id(
@@ -325,7 +326,7 @@ def test_produce_segmentation_logs(caplog: pytest.LogCaptureFixture) -> None:
 
     for _ in range(4):
         input_queue.put(DataCollection().add(
-            FrameData(np.zeros((100, 100, 3), dtype=np.uint8))
+            FrameData(create_black_image((100, 100, 3)))
         ).add(
             TrackingData(
                 np.array([
