@@ -117,4 +117,4 @@ def test_window_producer_logs(caplog: pytest.LogCaptureFixture) -> None:
         for log_tuple in log_tuples:
             assert log_tuple[0] == 'root'
             assert log_tuple[1] == logging.INFO
-            assert log_tuple[2].startswith('Window-FPS:')
+            assert log_tuple[2].startswith(f'Window-{WINDOW_NAME}-FPS:')

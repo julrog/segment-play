@@ -12,7 +12,7 @@ from ocsort.timer import Timer
 from pipeline.data import DataCollection, pipeline_data_generator
 from pipeline.producer import Producer
 
-WINDOW_NAME = 'application'
+WINDOW_NAME = 'frame-window'
 
 
 def produce_window(
@@ -21,6 +21,7 @@ def produce_window(
     key_queue: 'Queue[int]',
     frame_pool: Optional[FramePool] = None,
     log_cylces: int = 100,
+    window_name: str = WINDOW_NAME,
 ) -> None:
     try:
         count = 0
@@ -31,7 +32,7 @@ def produce_window(
             input_queue,
             output_queue,
             [FrameData],
-            receiver_name='Window'
+            receiver_name=f'Window-{window_name}'
         ):
             timer.tic()
             frame = data.get(FrameData).get_frame(frame_pool)
@@ -54,7 +55,7 @@ def produce_window(
                     count > log_cylces:
                 average_time = 1. / timer.average_time, 1. / \
                     (timer.average_time + reduce_frame_discard_timer)
-                logging.info(f'Window-FPS: {average_time}')
+                logging.info(f'Window-{window_name}-FPS: {average_time}')
     except Exception as e:  # pragma: no cover
         logging.error(f'Window producer exception: {e}')
     input_queue.cancel_join_thread()
@@ -72,6 +73,7 @@ class WindowProducer(Producer):
             key_queue: 'Queue[int]',
             frame_pool: Optional[FramePool] = None,
             log_cycles: int = 100,
+            window_name: str = WINDOW_NAME,
     ) -> None:
         super().__init__(
             input_queue,
@@ -79,6 +81,7 @@ class WindowProducer(Producer):
             key_queue,
             frame_pool,
             log_cycles,
+            window_name
         )
 
     def start(self) -> None:
