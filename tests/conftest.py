@@ -64,9 +64,18 @@ def short_sample_capture_settings() -> CaptureSettings:
 
 
 @pytest.fixture
-def sample_image() -> np.ndarray:
-    image_path = 'tests/resources/sample_image.jpg'
-    image = cv2.imread(image_path)
+def sample_image_path() -> str:
+    return 'tests/resources/sample_image_1.jpg'
+
+
+@pytest.fixture
+def sample_image_2_path() -> str:
+    return 'tests/resources/sample_image_2.png'
+
+
+@pytest.fixture
+def sample_image(sample_image_path: str) -> np.ndarray:
+    image = cv2.imread(sample_image_path)
     return image
 
 
@@ -124,6 +133,22 @@ def pose_data_collection(sample_image: np.ndarray) -> DataCollection:
     data.add(region_pose_estimation(
         pose, data.get(TrackingData), sample_image))
     return data
+
+
+@pytest.fixture
+def pose_data_generator() -> Callable[[str], DataCollection]:
+    def generate_pose_data(image_path: str) -> DataCollection:
+        image = cv2.imread(image_path)
+        tracker = Tracker()
+        tracker.update(image)
+        pose = Pose()
+        data = DataCollection()
+        data.add(FrameData(image))
+        data.add(TrackingData(tracker.get_all_targets()))
+        data.add(region_pose_estimation(
+            pose, data.get(TrackingData), image))
+        return data
+    return generate_pose_data
 
 
 @pytest.fixture

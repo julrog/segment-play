@@ -18,6 +18,7 @@ from ocsort.timer import Timer
 from pipeline.data import DataCollection, ExceptionCloseData
 from pipeline.manager import FrameProcessingPipeline
 from pipeline.stats import TrackFrameStats
+from pose.analyze import detect_narrow_arms
 from pose.pose import PoseRenderer
 from pose.producer import PoseData
 from segmentation.base import BodyPartSegmentation
@@ -119,41 +120,7 @@ class Director:
 
             mirror_p = int(
                 track_id) % 2 == 0 and self.settings.random_people_mirror
-            visible = True
-            ratio = (input_box[3] - input_box[1]) / \
-                (input_box[2] - input_box[0])
-            if self.settings.form_invisibility:
-                if data.has(PoseData) and data.get(
-                        PoseData).raw_landmarks[id] is not None:
-                    pose_landmarks = data.get(
-                        PoseData).raw_landmarks[id].landmark
-                    upper_right_arm_vec = np.array([
-                        pose_landmarks[14].x - pose_landmarks[12].x,
-                        pose_landmarks[14].y - pose_landmarks[12].y,
-                        (pose_landmarks[14].z - pose_landmarks[12].z) * 0.0,
-                    ], dtype=float)
-                    lower_right_arm_vec = np.array([
-                        pose_landmarks[16].x - pose_landmarks[14].x,
-                        pose_landmarks[16].y - pose_landmarks[14].y,
-                        (pose_landmarks[16].z - pose_landmarks[14].z) * 0.0,
-                    ], dtype=float)
-                    upper_left_arm_vec = np.array([
-                        pose_landmarks[13].x - pose_landmarks[11].x,
-                        pose_landmarks[13].y - pose_landmarks[11].y,
-                        (pose_landmarks[13].z - pose_landmarks[11].z) * 0.0,
-                    ], dtype=float)
-                    lower_left_arm_vec = np.array([
-                        pose_landmarks[15].x - pose_landmarks[13].x,
-                        pose_landmarks[15].y - pose_landmarks[13].y,
-                        (pose_landmarks[15].z - pose_landmarks[13].z) * 0.0,
-                    ], dtype=float)
-                    if get_verticality(upper_right_arm_vec) \
-                            + get_verticality(lower_right_arm_vec) \
-                            + get_verticality(upper_left_arm_vec) \
-                            + get_verticality(lower_left_arm_vec) > 0.8 * 4:
-                        visible = False
-                elif ratio > 2.5:
-                    visible = False
+            visible = not detect_narrow_arms(data, id)
 
             width = pad_box[2] - pad_box[0]
             center_x = (input_box[0] + input_box[2]) / 2.0
