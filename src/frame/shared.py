@@ -40,11 +40,15 @@ class FramePool:
 
     def __setstate__(self, d: Dict) -> None:
         shared_memories = d['shared_memory']
+        dtype = d['dtype']
+        byte_count = d['byte_count']
+        count = byte_count // np.dtype(dtype).itemsize
+
         d['frame_pool'] = [
             np.frombuffer(
                 sm.buf,
-                dtype=d['dtype'],
-                count=d['byte_count']
+                dtype=dtype,
+                count=count
             ).reshape(d['shape'])
             for sm in shared_memories
         ]
