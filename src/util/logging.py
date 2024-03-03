@@ -72,7 +72,7 @@ class LoggerManager:
 
 
 class logging_process:
-    def __init__(self, func: Callable[[], None]) -> None:
+    def __init__(self, func: Callable[..., None]) -> None:
         self.func = func
         functools.update_wrapper(self, func)
 
