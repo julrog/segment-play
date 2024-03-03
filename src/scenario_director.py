@@ -1,4 +1,5 @@
 import argparse
+import logging
 import random
 import time
 from multiprocessing import Value, freeze_support
@@ -26,6 +27,7 @@ from segmentation.producer import SegmentationData
 from settings import GameSettings
 from tracking.producer import TrackingData
 from util.image import create_black_image
+from util.logging import logger_manager
 from util.mask import (add_masks, apply_mask, apply_mask_grayscale, dilate,
                        scale_mask)
 from util.visualize import show_box
@@ -70,6 +72,8 @@ class Director:
             fullscreen: bool = False,
             use_pose: bool = False
     ) -> None:
+        self.log_processor = logger_manager.create_logger()
+        self.log_processor.configure()
         self.use_pose: bool = use_pose
         self.bodypart_segmentation: Synchronized[int] = Value(
             'i', BodyPartSegmentation.ALL.value)  # type: ignore
@@ -234,11 +238,12 @@ class Director:
 
         for data in self.processor.get_frames():
             if data.has(ExceptionCloseData):
-                print('Closing because of an exception in the pipeline!')
-                print(data.get(ExceptionCloseData).exception)
+                logging.error(
+                    'Closing because of an exception in the pipeline!')
+                logging.error(data.get(ExceptionCloseData).exception)
                 break
             elif data.is_closed():
-                print('Closing package received.')
+                logging.debug('Closing package received.')
                 break
             timer.tic()
 
@@ -271,22 +276,23 @@ class Director:
 
             timer.toc()
             if frame_count % 100 == 0:
-                print('Mask-FPS:', 1. / timer.average_time)
+                logging.info(f'Mask-FPS: {1. / timer.average_time}')
 
             overall_timer.toc()
             if frame_count == 50:
                 timer.clear()
             if frame_count % 50 == 0 and frame_count > 50:
-                print('Overall-FPS: ', 1. / overall_timer.average_time)
-                print('Processing delay: ', self.stats.get_avg_delay())
+                logging.info(f'Overall-FPS: {1. / overall_timer.average_time}')
+                logging.info(f'Processing delay: {self.stats.get_avg_delay()}')
                 if self.frame_pool:
-                    print('Avg frame processing: ',
-                          self.stats.get_processing_frames())
+                    logging.info(f'Avg frame processing: {self.stats.get_processing_frames()}')  # noqa: E501
             overall_timer.tic()
 
     def stop(self) -> None:
         self.processor.stop()
         cv2.destroyAllWindows()
+        self.log_processor.close()
+        logger_manager.close()
 
 
 def main(args: Dict) -> None:

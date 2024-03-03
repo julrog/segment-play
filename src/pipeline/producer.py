@@ -6,6 +6,7 @@ from multiprocessing import Process, Queue
 from typing import Any, Optional
 
 from pipeline.data import CloseData, DataCollection, ExceptionCloseData
+from util.logging import logger_manager, logging_process
 
 
 class Producer:
@@ -21,11 +22,10 @@ class Producer:
         self.kwargs = kwargs
 
     def base_start(self, func: Callable) -> None:
-        self.process = Process(target=func, args=(
+        self.process = Process(target=logging_process(func), args=(
             self.input_queue,
             *self.args,
-            *self.kwargs,
-        ))
+        ), kwargs=dict(self.kwargs, logger=logger_manager.create_logger()))
         self.process.start()
 
     def stop(self) -> None:
