@@ -15,6 +15,8 @@ from frame.camera import (CaptureSettings, add_camera_parameters,
 from frame.producer import FrameData
 from frame.shared import FramePool, create_frame_pool
 from input import Interaction
+from masking.mask import (add_masks, apply_mask, apply_mask_grayscale, dilate,
+                          scale_mask)
 from ocsort.timer import Timer
 from pipeline.data import DataCollection, ExceptionCloseData
 from pipeline.manager import FrameProcessingPipeline
@@ -28,8 +30,6 @@ from settings import GameSettings
 from tracking.producer import TrackingData
 from util.image import create_black_image
 from util.logging import logger_manager
-from util.mask import (add_masks, apply_mask, apply_mask_grayscale, dilate,
-                       scale_mask)
 from util.visualize import show_box
 
 FRAME_POOL_SIZE = 30

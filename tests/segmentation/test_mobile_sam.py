@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from frame.producer import FrameData
+from masking.mask import apply_mask
 from pipeline.data import DataCollection
 from pose.producer import PoseData
 from segmentation.mobile_sam import MobileSam
@@ -9,7 +10,6 @@ from tests.ai_tester import AITester
 from tests.conftest import requires_env
 from tracking.producer import TrackingData
 from util.image import scale_image
-from util.mask import apply_mask
 
 
 @pytest.fixture

@@ -10,8 +10,8 @@ import numpy as np
 sys.path.append(os.path.abspath(os.path.join(
     os.path.dirname(sys.modules[__name__].__file__), '..', '..', 'src')))  # type: ignore  # noqa
 
+from masking.mask import apply_mask
 from util.image import create_black_image
-from util.mask import apply_mask
 
 picture_size = (1440, 2560, 3)  # 4K resolution
 repeat_count = 100

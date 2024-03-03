@@ -4,9 +4,9 @@ from typing import Tuple
 import numpy as np
 import pytest
 
+from masking.mask import (add_masks, apply_mask_grayscale, create_empty_mask,
+                          dilate, erode, scale_mask)
 from util.image import create_black_image
-from util.mask import (add_masks, apply_mask_grayscale, create_empty_mask,
-                       dilate, erode, scale_mask)
 
 
 @pytest.mark.parametrize('first_shape',

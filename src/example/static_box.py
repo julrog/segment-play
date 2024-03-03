@@ -13,10 +13,10 @@ import numpy as np
 from background import Background
 from frame.camera import (add_camera_parameters, parse_camera_settings,
                           set_camera_parameters)
+from masking.mask import apply_mask, scale_mask
 from segmentation.mobile_sam import MobileSam
 from segmentation.sam import Sam
 from util.image import scale_image
-from util.mask import apply_mask, scale_mask
 from util.visualize import show_box
 
 

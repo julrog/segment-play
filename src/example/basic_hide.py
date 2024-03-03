@@ -17,6 +17,7 @@ from background import Background
 from frame.camera import add_camera_parameters, parse_camera_settings
 from frame.producer import FrameData, VideoCaptureProducer
 from frame.shared import create_frame_pool
+from masking.mask import add_masks, apply_mask, dilate, scale_mask
 from ocsort.timer import Timer
 from pipeline.data import DataCollection
 from pipeline.manager import clear_queue
@@ -24,7 +25,6 @@ from segmentation.mobile_sam import MobileSam
 from segmentation.sam import Sam
 from tracking.producer import TrackingData, TrackProducer
 from util.image import scale_image
-from util.mask import add_masks, apply_mask, dilate, scale_mask
 from util.visualize import show_box
 
 
