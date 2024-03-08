@@ -21,9 +21,12 @@ class FrameData(BaseData):
     def __init__(
         self,
         frame: Union[np.ndarray, int],
-        frame_pool: Optional[FramePool] = None
+        frame_pool: Optional[FramePool] = None,
+        id: Optional[int] = None
     ) -> None:
         super().__init__()
+        self.shape = None if type(frame) is not np.ndarray else frame.shape
+        self.id = id
         if frame_pool:
             self.using_shared_pool = True
             self.frame = frame_pool.put(frame)
@@ -94,14 +97,14 @@ def produce_capture(
             if skip_frames:
                 free_output_queue(output_queue, frame_pool)
                 output_queue.put(DataCollection().add(
-                    FrameData(frame, frame_pool)))
+                    FrameData(frame, frame_pool, count)))
             else:
                 placed_frame = False
                 # try and wait until there is space in the queue
                 while not placed_frame:
                     try:
                         output_queue.put(DataCollection().add(
-                            FrameData(frame, frame_pool)))
+                            FrameData(frame, frame_pool, count)))
                         placed_frame = True
                     except ValueError:
                         time.sleep(0.01)
