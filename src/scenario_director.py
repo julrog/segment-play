@@ -115,7 +115,7 @@ class Director:
             input_box = tracking_data.get_box(id).astype(np.int32)
             track_id = tracking_data.get_tracking_id(id)
             if track_id not in self.settings.id_position_map.keys():
-                self.settings.id_position_map[track_id] = random.random()
+                self.settings.update_position_map(track_id, random.random())
 
             if segmentation_data.get_mask(id) is None:
                 continue
@@ -123,7 +123,7 @@ class Director:
             mask = segmentation_data.get_mask(id)
 
             mirror_p = int(
-                track_id) % 2 == 0 and self.settings.random_people_mirror
+                track_id) % 2 == 0 and self.settings.get('random_people_mirror')
             visible = not detect_narrow_arms(data, id)
 
             width = pad_box[2] - pad_box[0]
@@ -160,8 +160,8 @@ class Director:
 
         self.background.add_frame(image)
 
-        if not self.settings.all_invisibility:
-            if self.settings.hide_background:
+        if not self.settings.get('all_invisibility'):
+            if self.settings.get('hide_background'):
                 image = np.zeros(image.shape, dtype=np.uint8)
             flipped_original_image = cv2.flip(original_image, 1)
             if mirror_masks is not None:
@@ -173,10 +173,10 @@ class Director:
                     if segmentation_data.mask_scale:
                         scale_m = scale_mask(
                             scale_m, segmentation_data.mask_scale)
-                    if not self.settings.hide_background:
+                    if not self.settings.get('hide_background'):
                         scale_m = dilate(scale_m)
                     gray = False
-                    if self.settings.gray_game:
+                    if self.settings.get('gray_game'):
                         color_pos = image.shape[1] * \
                             self.settings.id_position_map[track_id] * 0.5
                         mod_x_pos = int(x_pos) % int(
@@ -198,7 +198,7 @@ class Director:
                         (box[1], x_pos)
                     )
 
-        if self.use_pose and self.settings.show_poses:
+        if self.use_pose and self.settings.get('show_poses'):
             if data.has(PoseData):
                 pose_data = data.get(PoseData)
                 for id in range(len(tracking_data.targets)):
@@ -212,16 +212,16 @@ class Director:
                              (input_box[3] - input_box[1]) / image.shape[0])
                         )
 
-        if self.settings.show_boxes:
+        if self.settings.get('show_boxes'):
             for id in range(len(tracking_data.targets)):
                 input_box = tracking_data.get_box(id)
                 track_id = tracking_data.get_tracking_id(id)
                 image = show_box(image, input_box, track_id)
 
-        if self.settings.overall_mirror:
+        if self.settings.get('overall_mirror'):
             image = cv2.flip(image, 1)
 
-        if self.settings.black:
+        if self.settings.get('black'):
             image = create_black_image(image.shape)
 
         return image
@@ -250,7 +250,7 @@ class Director:
             processed_image = self.frame(data)
             self.stats.add(data)
 
-            if self.settings.save_imgs:
+            if self.settings.get('save_imgs'):
                 recording_original_name = \
                     f'{recording_base_name}_processed_{frame_count}.png'
                 cv2.imwrite(recording_original_name, processed_image)
@@ -298,7 +298,7 @@ class Director:
 def main(args: Dict) -> None:
     settings = GameSettings()
     settings.print()
-    settings.save_imgs = args.get('save', False)
+    settings.set('save_imgs', args.get('save', False))
     camera_settings = parse_camera_settings(args)
     frame_pool = create_frame_pool(FRAME_POOL_SIZE, camera_settings)
 
