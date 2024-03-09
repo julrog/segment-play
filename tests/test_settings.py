@@ -121,7 +121,7 @@ def test_copy_to() -> None:
     settings.set('segmentation_change', random.choice([True, False]))
 
     new_settings = GameSettings()
-    settings.copy_to(new_settings)
+    new_settings = settings.copy(new_settings)
 
     assert new_settings.get('overall_mirror') == settings.get('overall_mirror')
     assert new_settings.get('random_people_mirror') == settings.get(
@@ -181,5 +181,22 @@ def test_shared_settings() -> None:
     assert shared_settings.has_position_map(5)
     assert shared_settings.get_position_map(5) == 0.5
     assert shared_settings.get('form_invisibility')
+
+    copy_settings = GameSettings()
+    copy_settings = shared_settings.copy()
+
+    p = Process(target=change_setting_value, args=[shared_settings])
+    p.start()
+    p.join()
+
+    assert shared_settings.get('save_imgs')
+    assert shared_settings.get('segmentation_parts') == 4
+    assert shared_settings.get_position_map(5) == 0.5
+    assert not shared_settings.get('form_invisibility')
+
+    assert copy_settings.get('save_imgs')
+    assert copy_settings.get('segmentation_parts') == 3
+    assert copy_settings.get_position_map(5) == 0.5
+    assert copy_settings.get('form_invisibility')
 
     manager.close()

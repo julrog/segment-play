@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from multiprocessing.managers import BaseManager
-from typing import Dict, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 
 class GameSettings:
@@ -98,9 +98,11 @@ class GameSettings:
         self.set('segmentation_change', False)
         return changed, int(self.get('segmentation_parts'))
 
-    def copy_to(self, settings: GameSettings) -> None:
+    def copy(self, settings: Optional[GameSettings] = None) -> GameSettings:
+        settings = GameSettings() if settings is None else settings
         for key, value in self.__dict__.items():
             setattr(settings, key, value)
+        return settings
 
     def print(self) -> None:
         print(
@@ -126,7 +128,7 @@ class SharedSettingsManager:
 
     def shared_settings(self, game_settings: GameSettings) -> GameSettings:
         shared_game_settings = self.manager.GameSettings()  # type: ignore
-        game_settings.copy_to(shared_game_settings)
+        shared_game_settings = game_settings.copy(shared_game_settings)
         return shared_game_settings
 
     def close(self) -> None:
