@@ -21,11 +21,17 @@ class Producer:
         self.args = args
         self.kwargs = kwargs
 
-    def base_start(self, func: Callable) -> None:
-        self.process = Process(target=logging_process(func), args=(
-            self.input_queue,
-            *self.args,
-        ), kwargs=dict(self.kwargs, logger=logger_manager.create_logger()))
+    def base_start(self, func: Callable, handle_logs: bool = True) -> None:
+        if handle_logs:
+            self.process = Process(target=logging_process(func), args=(
+                self.input_queue,
+                *self.args,
+            ), kwargs=dict(self.kwargs, logger=logger_manager.create_logger()))
+        else:
+            self.process = Process(target=func, args=(
+                self.input_queue,
+                *self.args,
+            ), kwargs=self.kwargs)
         self.process.start()
 
     def stop(self) -> None:

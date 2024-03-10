@@ -60,13 +60,13 @@ class FrameProcessingPipeline:
             skip_frames=skip_capture_frames
         )
 
-    def start(self) -> None:
-        self.cap.start()
-        self.tracker.start()
+    def start(self, handle_logs: bool = True) -> None:
+        self.cap.start(handle_logs)
+        self.tracker.start(handle_logs)
         if self.use_pose:
-            self.pose.start()
+            self.pose.start(handle_logs)
         for segment in self.segments:
-            segment.start()
+            segment.start(handle_logs)
 
     def get_frames(self) -> Generator[DataCollection, None, None]:
         while True:

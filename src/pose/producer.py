@@ -141,5 +141,5 @@ class PoseProducer(Producer):
         super().__init__(input_queue, output_queue, self.ready, frame_pool,
                          skip_frames, log_cycles, model_complexity)
 
-    def start(self) -> None:
-        self.base_start(produce_pose)
+    def start(self, handle_logs: bool = True) -> None:
+        self.base_start(produce_pose, handle_logs)

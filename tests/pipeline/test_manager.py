@@ -1,3 +1,4 @@
+import time
 from multiprocessing import Queue
 from typing import List
 
@@ -28,7 +29,7 @@ def test_frame_processing_pipeline(
         camera_settings=short_sample_capture_settings,
         skip_capture_frames=False
     )
-    pipeline.start()
+    pipeline.start(False)
 
     frames: List[DataCollection] = []
     for frame in pipeline.get_frames():
@@ -50,14 +51,17 @@ def test_frame_processing_pipeline(
     assert last_frame.is_closed()
 
     pipeline.stop()
+    frame_pool.close()
 
 
 def test_clear_queue_without_frame_pool() -> None:
     queue: 'Queue[DataCollection]' = Queue()
 
     queue.put(DataCollection())
+    time.sleep(0.01)
 
     clear_queue(queue)
+    queue.close()
 
 
 @pytest.mark.parametrize('frame_data', [True, False])
@@ -75,7 +79,9 @@ def test_clear_queue_with_frame_pool(
         assert not frame_pool.is_empty()
 
     queue.put(data)
+    time.sleep(0.01)
 
     clear_queue(queue, frame_pool)
 
     assert frame_pool.is_empty()
+    frame_pool.close()

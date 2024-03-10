@@ -152,5 +152,5 @@ class BackgroundProcessor(Producer):
             log_cylces
         )
 
-    def start(self) -> None:
-        self.base_start(handle_background)
+    def start(self, handle_logs: bool = True) -> None:
+        self.base_start(handle_background, handle_logs)

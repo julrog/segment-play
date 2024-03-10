@@ -86,5 +86,5 @@ class CleanFrameProducer(Producer):
             limit
         )
 
-    def start(self) -> None:
-        self.base_start(clean_frame)
+    def start(self, handle_logs: bool = True) -> None:
+        self.base_start(clean_frame, handle_logs)

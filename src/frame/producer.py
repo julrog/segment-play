@@ -15,6 +15,7 @@ from frame.shared import FramePool
 from pipeline.data import (BaseData, CloseData, DataCollection,
                            ExceptionCloseData)
 from pipeline.producer import interruptible
+from util.logging import logger_manager, logging_process
 
 
 class FrameData(BaseData):
@@ -138,15 +139,26 @@ class VideoCaptureProducer:
         self.frame_pool = frame_pool
         self.skip_frames = skip_frames
 
-    def start(self) -> None:
-        self.process = Process(target=interruptible, args=(
-            produce_capture,
-            self.frame_queue,
-            self.settings,
-            self.stop_condition,
-            self.frame_pool,
-            self.skip_frames
-        ))
+    def start(self, handle_logs: bool = True) -> None:
+        if handle_logs:
+            self.process = Process(
+                target=logging_process(interruptible), args=(
+                    produce_capture,
+                    self.frame_queue,
+                    self.settings,
+                    self.stop_condition,
+                    self.frame_pool,
+                    self.skip_frames
+                ), kwargs=dict(logger=logger_manager.create_logger()))
+        else:
+            self.process = Process(target=interruptible, args=(
+                produce_capture,
+                self.frame_queue,
+                self.settings,
+                self.stop_condition,
+                self.frame_pool,
+                self.skip_frames
+            ))
         self.process.start()
 
     def stop(self) -> None:

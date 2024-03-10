@@ -84,5 +84,5 @@ class WindowProducer(Producer):
             window_name
         )
 
-    def start(self) -> None:
-        self.base_start(produce_window)
+    def start(self, handle_logs: bool = True) -> None:
+        self.base_start(produce_window, handle_logs)

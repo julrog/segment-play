@@ -103,5 +103,5 @@ class TrackProducer(Producer):
             down_scale
         )
 
-    def start(self) -> None:
-        self.base_start(produce_tracking)
+    def start(self, handle_logs: bool = True) -> None:
+        self.base_start(produce_tracking, handle_logs)
