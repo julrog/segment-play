@@ -87,7 +87,7 @@ class Tracker:
                 target[2] + padding,
                 target[3] + padding,
             ]
-            if self.down_scale != 1.0 and self.down_scale is not None:
+            if self.down_scale != 1.0:
                 padded_box = self.prepare_scale_bb(
                     int(self.down_scale), padded_box, image)
                 target = self.prepare_scale_bb(

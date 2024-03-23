@@ -26,7 +26,7 @@ class SegmentationData(BaseData):
     def __init__(
         self,
         masks: List[List[np.ndarray]],
-        mask_scale: Optional[float] = None,
+        mask_scale: float = 1.0,
     ) -> None:
         super().__init__()
         self.masks = masks
@@ -41,7 +41,7 @@ class SegmentationData(BaseData):
 def segmentation_calculation(
     segment: Segmentation,
     image: np.ndarray,
-    down_scale: Optional[float],
+    down_scale: float,
     tracking_data: TrackingData,
     pose_data: Optional[PoseData],
     specific_bodypart: Optional[int],
@@ -53,7 +53,7 @@ def segmentation_calculation(
     for id in range(len(tracking_data.targets)):
         input_box = tracking_data.get_box(id)
         pad_box = tracking_data.get_padded_box(id)
-        if down_scale != 1.0 and down_scale is not None:
+        if down_scale != 1.0:
             input_box /= down_scale
             pad_box /= down_scale
 
@@ -67,7 +67,7 @@ def segmentation_calculation(
             landmarks, point_mode = pose_data.get_landmarks_xy(
                 id, bodypart, visiblity_threshold)
             if landmarks is not None:
-                if down_scale != 1.0 and down_scale is not None:
+                if down_scale != 1.0:
                     landmarks /= down_scale
 
                 if specific_bodypart is not None \
@@ -124,7 +124,7 @@ def produce_segmentation(
     frame_pool: Optional[FramePool] = None,
     skip_frames: bool = True,
     log_cylces: int = 100,
-    down_scale: Optional[float] = None,
+    down_scale: float = 1.0,
     fast: bool = True,
     specific_bodypart: Optional[Synchronized] = None,
 ) -> None:
@@ -144,7 +144,7 @@ def produce_segmentation(
             timer.tic()
             scaled_image = data.get(FrameData).get_frame(frame_pool)
 
-            if down_scale != 1.0 and down_scale is not None:
+            if down_scale != 1.0:
                 scaled_image = scale_image(scaled_image, 1.0 / down_scale)
 
             specific_bodypart_value = None if specific_bodypart is None \
@@ -191,7 +191,7 @@ class SegmentProducer(Producer):
         frame_pool: Optional[FramePool] = None,
         skip_frames: bool = True,
         log_cycles: int = 100,
-        down_scale: Optional[float] = None,
+        down_scale: float = 1.0,
         fast: bool = True,
         specific_bodypart: Optional[Synchronized[int]] = None,
     ) -> None:

@@ -146,12 +146,12 @@ def test_segmentation_calculation_bodyparts(
 
 @pytest.mark.parametrize('fast_segmentation', [False, True])
 @pytest.mark.parametrize('use_frame_pool', [False, True])
-@pytest.mark.parametrize('down_scale', [None, 1.0, 2.0])
+@pytest.mark.parametrize('down_scale', [1.0, 2.0])
 def test_produce_segmentation(
         sample_image: np.ndarray,
         use_frame_pool: bool,
         fast_segmentation: bool,
-        down_scale: Optional[float]
+        down_scale: float
 ) -> None:
     frame_pool: Optional[FramePool] = FramePool(
         sample_image, 10) if use_frame_pool else None

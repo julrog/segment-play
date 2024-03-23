@@ -66,7 +66,7 @@ class Director:
             settings: GameSettings,
             segment_processes: int = 2,
             fast: bool = True,
-            down_scale: Optional[float] = None,
+            down_scale: float = 1.0,
             camera_settings: Optional[CaptureSettings] = None,
             frame_pool: Optional[FramePool] = None,
             fullscreen: bool = False,
@@ -137,9 +137,7 @@ class Director:
                 width,
                 track_id
             ))
-            mask_scale = 1.0
-            if segmentation_data.mask_scale:
-                mask_scale = segmentation_data.mask_scale
+            mask_scale = segmentation_data.mask_scale
             if hide_mask is None:
                 hide_mask = np.zeros((
                     int(image.shape[0] / mask_scale),
@@ -153,7 +151,7 @@ class Director:
             )
 
         if hide_mask is not None:
-            if segmentation_data.mask_scale:
+            if segmentation_data.mask_scale != 1.0:
                 hide_mask = scale_mask(hide_mask, segmentation_data.mask_scale)
             hide_mask = dilate(hide_mask)
             image = apply_mask(image, self.background.get_bg(), hide_mask)
@@ -170,7 +168,7 @@ class Director:
                 scale_m, mirror, box, visible, x_pos, p_width, track_id \
                     = mirror_mask_data
                 if visible:
-                    if segmentation_data.mask_scale:
+                    if segmentation_data.mask_scale != 1.0:
                         scale_m = scale_mask(
                             scale_m, segmentation_data.mask_scale)
                     if not self.settings.get('hide_background'):
@@ -306,7 +304,7 @@ def main(args: Dict) -> None:
         settings,
         args.get('segment_processes', 2),
         args.get('fast', False),
-        args.get('down_scale', False),
+        args.get('down_scale', 1.0),
         camera_settings,
         frame_pool,
         args.get('fullscreen', False),

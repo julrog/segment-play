@@ -40,6 +40,8 @@ def check_tracking_data(
         tid = tracking_data.get_tracking_id(id)
         assert isinstance(tid, int)
 
+        assert id == tracking_data.get_index(tracking_data.get_tracking_id(id))
+
 
 def test_tracking_data() -> None:
     tracking_data = TrackingData(

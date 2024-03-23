@@ -25,6 +25,9 @@ class TrackingData(BaseData):
         super().__init__()
         self.targets = targets
 
+    def get_index(self, tracking_id: int) -> int:
+        return [int(target[4]) for target in self.targets].index(tracking_id)
+
     def get_box(self, id: int) -> np.ndarray:
         return self.targets[id][:4].copy()
 

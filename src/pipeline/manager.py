@@ -16,7 +16,7 @@ class FrameProcessingPipeline:
     def __init__(
         self,
         segment_processes: int = 2,
-        down_scale: Optional[float] = None,
+        down_scale: float = 1.0,
         fast: bool = True,
         camera_settings: Optional[CaptureSettings] = None,
         frame_pool: Optional[FramePool] = None,
