@@ -39,6 +39,12 @@ def dilate(mask: np.ndarray) -> np.ndarray:
     return mask.astype(bool)
 
 
+def dilate_single(mask: np.ndarray) -> np.ndarray:
+    kernel = np.ones((3, 3), dtype=np.float32)
+    mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=1)
+    return mask.astype(bool)
+
+
 def scale_mask(mask: np.ndarray, scale: float) -> np.ndarray:
     width = int(mask.shape[1] * scale)
     height = int(mask.shape[0] * scale)

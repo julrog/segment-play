@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from masking.mask import (add_masks, apply_mask_grayscale, create_empty_mask,
-                          dilate, erode, scale_mask)
+                          dilate, dilate_single, erode, scale_mask)
 from util.image import create_black_image
 
 
@@ -59,6 +59,17 @@ def test_dilate() -> None:
     assert np.sum(blank_mask) == 60 * 60
     scaled_mask = dilate(blank_mask)
     assert np.sum(scaled_mask) > 60 * 60
+
+
+def test_dilate_single() -> None:
+    blank_mask = create_empty_mask((100, 100))
+    blank_mask[20:80, 20:80] = 1
+    assert np.sum(blank_mask) == 60 * 60
+    scaled_mask = dilate(blank_mask)
+    assert np.sum(scaled_mask) > 60 * 60
+    slightly_scaled_mask = dilate_single(blank_mask)
+    assert np.sum(slightly_scaled_mask) > 60 * 60
+    assert np.sum(scaled_mask) > np.sum(slightly_scaled_mask)
 
 
 @pytest.mark.parametrize('scale', [1.0, 0.5, 2.0])
