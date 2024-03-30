@@ -74,6 +74,11 @@ def sample_image_2_path() -> str:
 
 
 @pytest.fixture
+def sample_image_multiple_path() -> str:
+    return 'tests/resources/sample_image_multiple.jpg'
+
+
+@pytest.fixture
 def sample_image(sample_image_path: str) -> np.ndarray:
     image = cv2.imread(sample_image_path)
     return image
@@ -164,6 +169,48 @@ def segmentation_data_collection(sample_image: np.ndarray) -> DataCollection:
     )
     data.add(segmentation_data)
     return data
+
+
+@pytest.fixture
+def full_data_collection(sample_image: np.ndarray) -> DataCollection:
+    segmentation = MobileSam()
+    tracker = Tracker()
+    pose = Pose()
+    tracker.update(sample_image)
+    data = DataCollection()
+    data.add(FrameData(sample_image))
+    data.add(TrackingData(tracker.get_all_targets()))
+    data.add(region_pose_estimation(
+        pose, data.get(TrackingData), sample_image))
+    segmentation_data = segmentation_calculation(
+        segmentation, sample_image, 1.0, data.get(TrackingData), None, None
+    )
+    data.add(segmentation_data)
+    return data
+
+
+@pytest.fixture
+def full_data_generator() -> Callable[[str, float], DataCollection]:
+    def generate_full_data(
+        image_path: str,
+        down_scale: float = 1.0
+    ) -> DataCollection:
+        image = cv2.imread(image_path)
+        segmentation = MobileSam()
+        tracker = Tracker()
+        pose = Pose()
+        tracker.update(image)
+        data = DataCollection()
+        data.add(FrameData(image))
+        data.add(TrackingData(tracker.get_all_targets()))
+        data.add(region_pose_estimation(
+            pose, data.get(TrackingData), image))
+        segmentation_data = segmentation_calculation(
+            segmentation, image, down_scale, data.get(TrackingData), None, None
+        )
+        data.add(segmentation_data)
+        return data
+    return generate_full_data
 
 
 def requires_env(*required_envs: str) -> Callable:
