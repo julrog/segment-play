@@ -2,7 +2,7 @@ import queue
 import time
 from multiprocessing import Process, Queue, Value
 from multiprocessing.sharedctypes import Synchronized
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 import pytest
@@ -14,6 +14,7 @@ from frame.producer import (FrameData, VideoCaptureProducer, free_output_queue,
 from frame.shared import FramePool, create_frame_pool
 from pipeline.data import DataCollection, ExceptionCloseData
 from pipeline.manager import clear_queue
+from util.image import create_black_image
 
 
 def check_frame_data(
@@ -53,7 +54,9 @@ def test_free_output_queue(
     for rep in range(repetitions):
         previous_discard_timer = reduce_frame_discard_timer
         reduce_frame_discard_timer = free_output_queue(
-            output_queue, None, reduce_frame_discard_timer)
+            output_queue,
+            reduce_frame_discard_timer=reduce_frame_discard_timer
+        )
         if previous_discard_timer is not None:
             assert reduce_frame_discard_timer is not None
             if rep + 1 > queued_items:
@@ -67,6 +70,67 @@ def test_free_output_queue(
             assert reduce_frame_discard_timer is None
         # delay necessary, otherwise empty is not up-to-date
         time.sleep(0.001)
+
+
+class FrameDataOne(FrameData):
+    pass
+
+
+class FrameDataTwo(FrameData):
+    pass
+
+
+class FrameDataThree(FrameData):
+    pass
+
+
+def put_data_in_queue(
+    queue: 'Queue[DataCollection]',
+    frame_data: List[DataCollection]
+) -> None:
+    for fd in frame_data:
+        queue.put(DataCollection().add(fd))
+
+
+def test_free_output_queue_frame_pools() -> None:
+    black_image = create_black_image((100, 100, 3))
+    frame_pool_one: FramePool = FramePool(black_image, 2)
+    frame_pool_two: FramePool = FramePool(black_image, 2)
+    frame_pool_three: FramePool = FramePool(black_image, 2)
+
+    frame_pools = {FrameDataOne: frame_pool_one, FrameDataTwo: frame_pool_two}
+
+    frame_data: List[FrameData] = [
+        FrameDataOne(black_image, frame_pool_one),
+        FrameDataTwo(black_image, frame_pool_two),
+        FrameDataThree(black_image, frame_pool_three)
+    ]
+
+    output_queue: 'Queue[DataCollection]' = Queue()
+
+    queueing_process = Process(
+        target=put_data_in_queue, args=(output_queue, frame_data))
+
+    queueing_process.start()
+    queueing_process.join()
+
+    assert output_queue.qsize() == 3
+    free_output_queue(output_queue, frame_pools)
+    assert output_queue.qsize() == 2
+    free_output_queue(output_queue, frame_pools)
+    assert output_queue.qsize() == 1
+    free_output_queue(output_queue, frame_pools)
+    assert output_queue.qsize() == 0
+
+    time.sleep(0.2)
+
+    assert frame_pool_one.is_empty()
+    assert frame_pool_two.is_empty()
+    assert not frame_pool_three.is_empty()
+
+    frame_pool_three.free_frame(frame_data[2].frame)
+
+    assert frame_pool_three.is_empty()
 
 
 def slow_consume(

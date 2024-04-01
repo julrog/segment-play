@@ -4,7 +4,7 @@ import logging
 import time
 from multiprocessing import Queue, Value
 from multiprocessing.sharedctypes import Synchronized
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import numpy as np
 
@@ -84,6 +84,7 @@ def produce_pose(
     model_complexity: int = 1,
 ) -> None:
     try:
+        frame_pools: Dict[Type, Optional[FramePool]] = {FrameData: frame_pool}
         reduce_frame_discard_timer = 0.0
         timer = Timer()
         pose = Pose(model_complexity)
@@ -103,7 +104,7 @@ def produce_pose(
 
             if skip_frames:
                 reduce_frame_discard_timer = free_output_queue(
-                    output_queue, frame_pool, reduce_frame_discard_timer)
+                    output_queue, frame_pools, reduce_frame_discard_timer)
             output_queue.put(data.add(pose_data))
 
             timer.toc()
@@ -118,7 +119,7 @@ def produce_pose(
                 time.sleep(reduce_frame_discard_timer)
     except Exception as e:  # pragma: no cover
         if skip_frames:
-            free_output_queue(output_queue, frame_pool)
+            free_output_queue(output_queue, frame_pools)
         output_queue.put(DataCollection().add(
             ExceptionCloseData(e)))
     if pose:  # pragma: no cover

@@ -4,7 +4,7 @@ import logging
 import time
 from multiprocessing import Queue, Value
 from multiprocessing.sharedctypes import Synchronized
-from typing import List, Optional
+from typing import Dict, List, Optional, Type
 
 import numpy as np
 
@@ -48,6 +48,7 @@ def produce_tracking(
     down_scale: float = 1.0,
 ) -> None:
     try:
+        frame_pools: Dict[Type, Optional[FramePool]] = {FrameData: frame_pool}
         reduce_frame_discard_timer = 0.0
         timer = Timer()
         tracker = Tracker(down_scale)
@@ -64,7 +65,7 @@ def produce_tracking(
             tracker.update(frame)
             if skip_frames:
                 reduce_frame_discard_timer = free_output_queue(
-                    output_queue, frame_pool, reduce_frame_discard_timer)
+                    output_queue, frame_pools, reduce_frame_discard_timer)
             output_queue.put(data.add(TrackingData(tracker.get_all_targets())))
             timer.toc()
             if tracker.current_frame == log_cylces:
@@ -78,7 +79,7 @@ def produce_tracking(
                 time.sleep(reduce_frame_discard_timer)
     except Exception as e:  # pragma: no cover
         if skip_frames:
-            free_output_queue(output_queue, frame_pool)
+            free_output_queue(output_queue, frame_pools)
         output_queue.put(DataCollection().add(
             ExceptionCloseData(e)))
     output_queue.cancel_join_thread()

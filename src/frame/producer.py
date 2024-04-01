@@ -5,7 +5,7 @@ import queue
 import time
 from multiprocessing import Process, Queue, Value
 from multiprocessing.sharedctypes import Synchronized
-from typing import Optional, Union
+from typing import Dict, Optional, Type, Union
 
 import cv2
 import numpy as np
@@ -44,14 +44,17 @@ class FrameData(BaseData):
 
 def free_output_queue(
         output_queue: 'Queue[DataCollection]',
-        frame_pool: Optional[FramePool] = None,
+        frame_pools: Dict[Type, Optional[FramePool]] = {},
         reduce_frame_discard_timer: Optional[float] = None
 ) -> Optional[float]:
     if not output_queue.empty():
         try:
             discarded_frame = output_queue.get(timeout=0.01)
-            if frame_pool and discarded_frame.has(FrameData):
-                frame_pool.free_frame(discarded_frame.get(FrameData).frame)
+            for data_type, frame_pool in frame_pools.items():
+                if discarded_frame.has(data_type) and frame_pool:
+                    data = discarded_frame.get(data_type)
+                    assert isinstance(data, FrameData)
+                    frame_pool.free_frame(data.frame)
             if reduce_frame_discard_timer is not None:
                 reduce_frame_discard_timer += 0.015
         except queue.Empty:  # pragma: no cover
@@ -71,6 +74,7 @@ def produce_capture(
         frame_pool: Optional[FramePool] = None,
         skip_frames: bool = True,
 ) -> None:
+    frame_pools: Dict[Type, Optional[FramePool]] = {FrameData: frame_pool}
     if settings:
         if isinstance(settings.input, int):  # pragma: cam-tests
             cap = cv2.VideoCapture(settings.input, settings.api)
@@ -96,7 +100,7 @@ def produce_capture(
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame.flags.writeable = False
             if skip_frames:
-                free_output_queue(output_queue, frame_pool)
+                free_output_queue(output_queue, frame_pools)
                 output_queue.put(DataCollection().add(
                     FrameData(frame, frame_pool, count)))
             else:
@@ -113,11 +117,11 @@ def produce_capture(
             count += 1
 
         if skip_frames:
-            free_output_queue(output_queue, frame_pool)
+            free_output_queue(output_queue, frame_pools)
         output_queue.put(DataCollection().add(CloseData()))
     except Exception as e:  # pragma: no cover
         if skip_frames:
-            free_output_queue(output_queue, frame_pool)
+            free_output_queue(output_queue, frame_pools)
         output_queue.put(DataCollection().add(
             ExceptionCloseData(e)))
     output_queue.cancel_join_thread()
