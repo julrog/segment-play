@@ -1,7 +1,7 @@
 import queue
 from multiprocessing import Queue
 from multiprocessing.sharedctypes import Synchronized
-from typing import Generator, List, Optional
+from typing import Dict, Generator, List, Optional, Type
 
 from frame.camera import CaptureSettings
 from frame.producer import FrameData, VideoCaptureProducer
@@ -60,7 +60,7 @@ class FrameProcessingPipeline:
             skip_frames=skip_capture_frames
         )
 
-    def start(self, handle_logs: bool = True) -> None:
+    def start(self, handle_logs: bool = False) -> None:
         self.cap.start(handle_logs)
         self.tracker.start(handle_logs)
         if self.use_pose:
@@ -86,18 +86,21 @@ class FrameProcessingPipeline:
 
 def clear_queue(
         clear_queue: Queue,
-        frame_pool: Optional[FramePool] = None
+        frame_pools: Optional[Dict[Type, FramePool]] = None,
 ) -> None:
     try:
-        if not frame_pool:
+        if not frame_pools:
             while True:
                 clear_queue.get_nowait()
         else:
             while True:
                 data: DataCollection = clear_queue.get_nowait()
-                if data.has(FrameData) \
-                        and data.get(FrameData).using_shared_pool:
-                    frame_pool.free_frame(data.get(FrameData).frame)
+                for frame_type, frame_pool in frame_pools.items():
+                    if frame_pool is not None and data.has(frame_type) \
+                            and data.get(frame_type).using_shared_pool:
+                        frame_data = data.get(frame_type)
+                        assert isinstance(frame_data, FrameData)
+                        frame_pool.free_frame(frame_data.frame)
     except queue.Empty:
         pass
     clear_queue.close()

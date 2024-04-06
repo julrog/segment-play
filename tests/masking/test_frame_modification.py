@@ -144,8 +144,6 @@ def test_apply_segmented_object(
         setting.set(key, value)
     data = modification_handling(setting, full_data_collection)
 
-    # data.get(FrameModificationData).modifications[2].visibility = False
-
     foreground_mask = get_foreground_mask(data)
     assert foreground_mask is not None
 

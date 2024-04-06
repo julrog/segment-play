@@ -63,15 +63,16 @@ def test_background_exception() -> None:
 
 def test_background_handle() -> None:
     weight = 0.05
-    frame_pool: Optional[FramePool] = FramePool(
-        create_black_image((100, 100, 3)), 20)
+    # FramePool(create_black_image((100, 100, 3)), 20)
+    frame_pool: Optional[FramePool] = None
+    frame_pools = {FrameData: frame_pool}
     bg_frame_pool: Optional[FramePool] = FramePool(
         create_black_image((100, 100, 3)).astype(np.float32), 20)
     frame_queue: 'Queue[DataCollection]' = Queue()
     black_image = create_black_image((100, 100, 3))
-    used_frames = [DataCollection().add(FrameData(black_image))]
+    used_frames = [black_image]
 
-    processor = BackgroundProcessor(frame_queue, frame_pool, bg_frame_pool)
+    processor = BackgroundProcessor(frame_queue, None, bg_frame_pool)
     processor.start()
 
     handle = BackgroundHandle(processor.background_id,
@@ -84,7 +85,7 @@ def test_background_handle() -> None:
     assert np.array_equal(current_background, black_image)
 
     white_image = np.ones((100, 100, 3), dtype=np.uint8) * 255
-    used_frames.append(DataCollection().add(FrameData(white_image)))
+    used_frames.append(white_image)
     for i in range(4):
         handle.add_frame(used_frames[-1])
         handle.wait_for_id(i + 1)
@@ -95,20 +96,20 @@ def test_background_handle() -> None:
         assert np.array_equal(current_background, expected_image)
 
     processor.stop()
-
-    clear_queue(frame_queue, frame_pool)
+    clear_queue(frame_queue, frame_pools)
 
 
 def test_background_handle_logs(caplog: pytest.LogCaptureFixture) -> None:
     frame_pool: Optional[FramePool] = FramePool(
         create_black_image((100, 100, 3)), 20)
+    frame_pools = {FrameData: frame_pool}
     bg_frame_pool: Optional[FramePool] = FramePool(
         create_black_image((100, 100, 3)).astype(np.float32), 20)
     frame_queue: 'Queue[DataCollection]' = Queue()
     black_image = create_black_image((100, 100, 3))
-    used_frames = [DataCollection().add(FrameData(black_image))]
+    used_frames = [black_image]
 
-    processor = BackgroundProcessor(frame_queue, frame_pool, bg_frame_pool, 2)
+    processor = BackgroundProcessor(frame_queue, None, bg_frame_pool, 2)
 
     handle = BackgroundHandle(processor.background_id,
                               processor.update_count,
@@ -122,7 +123,7 @@ def test_background_handle_logs(caplog: pytest.LogCaptureFixture) -> None:
         handle_background(frame_queue, frame_pool, bg_frame_pool,
                           processor.background_id, processor.update_count, 2)
 
-        clear_queue(frame_queue, frame_pool)
+        clear_queue(frame_queue, frame_pools)
 
         log_tuples = caplog.record_tuples
         assert len(log_tuples) == 1

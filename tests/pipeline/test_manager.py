@@ -29,7 +29,7 @@ def test_frame_processing_pipeline(
         camera_settings=short_sample_capture_settings,
         skip_capture_frames=False
     )
-    pipeline.start(False)
+    pipeline.start()
 
     frames: List[DataCollection] = []
     for frame in pipeline.get_frames():
@@ -71,6 +71,7 @@ def test_clear_queue_with_frame_pool(
     image = create_black_image((100, 100, 3))
 
     frame_pool = FramePool(image, 2)
+    frame_pools = {FrameData: frame_pool}
     queue: 'Queue[DataCollection]' = Queue()
 
     data = DataCollection()
@@ -81,7 +82,7 @@ def test_clear_queue_with_frame_pool(
     queue.put(data)
     time.sleep(0.01)
 
-    clear_queue(queue, frame_pool)
+    clear_queue(queue, frame_pools)
 
     assert frame_pool.is_empty()
     frame_pool.close()

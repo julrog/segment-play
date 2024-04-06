@@ -225,7 +225,7 @@ class Director:
         return image
 
     def run(self) -> None:
-        self.processor.start()
+        self.processor.start(True)
 
         overall_timer = Timer()
         overall_timer.tic()

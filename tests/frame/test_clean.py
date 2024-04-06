@@ -77,7 +77,7 @@ def test_clean_frame() -> None:
         FrameData(create_black_image((100, 100, 3)))))
     input_queue.put(DataCollection().add(CloseData()))
 
-    clean_frame(input_queue, frame_pool)
+    clean_frame(input_queue, {FrameData: frame_pool})
 
     assert input_queue.empty()
     assert frame_pool.is_empty()
@@ -94,7 +94,8 @@ def test_clean_frame_early_close() -> None:
         FrameData(create_black_image((100, 100, 3)), frame_pool)))
     input_queue.put(DataCollection().add(CloseData()))
 
-    clean_frame(input_queue, frame_pool, cleanup_delay=0.1, limit=1)
+    clean_frame(input_queue, {FrameData: frame_pool},
+                cleanup_delay=0.1, limit=1)
 
     assert input_queue.empty()
     assert frame_pool.is_empty()
@@ -104,6 +105,7 @@ def test_clean_frame_producer(
     sample_capture_settings: CaptureSettings,
 ) -> None:
     frame_pool = create_frame_pool(40, sample_capture_settings)
+    frame_pools = {FrameData: frame_pool}
     frame_queue: 'Queue[DataCollection]' = Queue()
 
     frame_producer = VideoCaptureProducer(
@@ -112,7 +114,7 @@ def test_clean_frame_producer(
 
     clean_producer = CleanFrameProducer(
         frame_queue,
-        frame_pool,
+        {FrameData: frame_pool},
         cleanup_delay=0.01,
         limit=10
     )
@@ -122,16 +124,17 @@ def test_clean_frame_producer(
 
     frame_producer.stop()
     clean_producer.join()
-    clear_queue(frame_queue, frame_pool)
+    clear_queue(frame_queue, frame_pools)
 
 
 def test_stop_producer() -> None:
     frame_pool = FramePool(np.zeros([10, 10], dtype=np.uint8), 2)
+    frame_pools = {FrameData: frame_pool}
     in_queue: 'Queue[DataCollection]' = Queue()
-    producer = CleanFrameProducer(in_queue, frame_pool)
+    producer = CleanFrameProducer(in_queue, {FrameData: frame_pool})
     producer.start()
     producer.stop()
 
     assert in_queue.empty()
 
-    clear_queue(in_queue, frame_pool)
+    clear_queue(in_queue, frame_pools)

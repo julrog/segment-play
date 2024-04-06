@@ -21,7 +21,7 @@ class Producer:
         self.args = args
         self.kwargs = kwargs
 
-    def base_start(self, func: Callable, handle_logs: bool = True) -> None:
+    def base_start(self, func: Callable, handle_logs: bool = False) -> None:
         if handle_logs:
             self.process = Process(target=logging_process(func), args=(
                 self.input_queue,
@@ -38,7 +38,8 @@ class Producer:
         self.input_queue.put(DataCollection().add(CloseData()))
         if self.process:
             time.sleep(1)
-            self.process.kill()
+            if self.process.is_alive():  # pragma: no cover
+                self.process.kill()
 
     def join(self) -> None:
         if self.process:

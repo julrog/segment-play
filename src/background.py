@@ -34,9 +34,13 @@ class Background:
         else:
             if self.frame_pool is not None:
                 cv2.accumulateWeighted(
-                    img, self.frame_pool.get(self.avg), self.new_weight)
+                    img.astype(np.float32),
+                    self.frame_pool.get(self.avg),
+                    self.new_weight
+                )
             else:
-                cv2.accumulateWeighted(img, self.avg, self.new_weight)
+                cv2.accumulateWeighted(img.astype(
+                    np.float32), self.avg, self.new_weight)
 
     def add_black(self, shape: Tuple[int, ...]) -> None:
         black_image = create_black_image(shape)
@@ -68,9 +72,13 @@ class BackgroundHandle:
         self.frame_pool = frame_pool
         self.queue = queue
 
-    def add_frame(self, data: DataCollection) -> None:
-        assert data.has(FrameData)
-        self.queue.put(DataCollection().add(data.get(FrameData)))
+    def add_frame(
+        self,
+        frame: np.ndarray
+    ) -> FrameData:
+        frame_data = FrameData(frame)
+        self.queue.put(DataCollection().add(frame_data))
+        return frame_data
 
     def wait_for_bg(self) -> None:
         while self.background_id.value == -1:
@@ -94,17 +102,17 @@ def handle_background(
     update_count: 'Synchronized[int]',
     log_cylces: int = 100,
 ) -> None:
+    count = 0
+    timer = Timer()
+    background = Background(bg_frame_pool)
     try:
-        count = 0
-        timer = Timer()
-        background = Background(bg_frame_pool)
         inital_frame_set = False
 
         for data in pipeline_data_generator(
             input_queue,
             None,
             [FrameData],
-            receiver_name='Tracking'
+            receiver_name='Background'
         ):
             timer.tic()
             frame = data.get(FrameData).get_frame(frame_pool)
@@ -152,5 +160,5 @@ class BackgroundProcessor(Producer):
             log_cylces
         )
 
-    def start(self, handle_logs: bool = True) -> None:
+    def start(self, handle_logs: bool = False) -> None:
         self.base_start(handle_background, handle_logs)

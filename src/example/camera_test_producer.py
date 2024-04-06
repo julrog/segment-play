@@ -17,11 +17,12 @@ import cv2
 
 from frame.camera import add_camera_parameters, parse_camera_settings
 from frame.clean import CleanFrameProducer
-from frame.producer import VideoCaptureProducer
+from frame.producer import FrameData, VideoCaptureProducer
 from frame.shared import create_frame_pool
 from frame.show import WindowProducer
 from pipeline.data import DataCollection
 from pipeline.manager import clear_queue
+from util.logging import logger_manager
 
 
 def parse_args() -> Dict:
@@ -32,21 +33,24 @@ def parse_args() -> Dict:
 
 
 def main(args: Dict) -> None:
+    logger_manager.start()
     camera_settings = parse_camera_settings(args)
 
     frame_queue: 'Queue[DataCollection]' = Queue()
     cleanup_queue: 'Queue[DataCollection]' = Queue()
     frame_pool = create_frame_pool(100, camera_settings)
+    frame_pools = {FrameData: frame_pool}
 
     key_queue: 'Queue[int]' = Queue()
-    window = WindowProducer(frame_queue, cleanup_queue, key_queue, frame_pool)
+    window = WindowProducer(frame_queue, cleanup_queue,
+                            key_queue, {FrameData: frame_pool})
     cleaner = CleanFrameProducer(
-        cleanup_queue, frame_pool, cleanup_delay=1.0, limit=20)
+        cleanup_queue, {FrameData: frame_pool}, cleanup_delay=1.0, limit=20)
     cap = VideoCaptureProducer(frame_queue, camera_settings, frame_pool)
 
-    window.start()
-    cleaner.start()
-    cap.start()
+    window.start(True)
+    cleaner.start(True)
+    cap.start(True)
 
     try:
         while True:
@@ -64,9 +68,10 @@ def main(args: Dict) -> None:
     cap.stop()
     cleaner.join()
     window.join()
-    clear_queue(frame_queue, frame_pool)
-    clear_queue(cleanup_queue, frame_pool)
+    clear_queue(frame_queue, frame_pools)
+    clear_queue(cleanup_queue, frame_pools)
     clear_queue(key_queue)
+    logger_manager.close()
     print('Closing')
 
 

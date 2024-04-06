@@ -209,5 +209,5 @@ class SegmentProducer(Producer):
             specific_bodypart
         )
 
-    def start(self, handle_logs: bool = True) -> None:
+    def start(self, handle_logs: bool = False) -> None:
         self.base_start(produce_segmentation, handle_logs)

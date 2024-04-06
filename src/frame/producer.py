@@ -143,7 +143,7 @@ class VideoCaptureProducer:
         self.frame_pool = frame_pool
         self.skip_frames = skip_frames
 
-    def start(self, handle_logs: bool = True) -> None:
+    def start(self, handle_logs: bool = False) -> None:
         if handle_logs:
             self.process = Process(
                 target=logging_process(interruptible), args=(

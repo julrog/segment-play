@@ -15,6 +15,7 @@ from frame.shared import FramePool, create_frame_pool
 from pipeline.data import DataCollection, ExceptionCloseData
 from pipeline.manager import clear_queue
 from util.image import create_black_image
+from util.logging import logger_manager
 
 
 def check_frame_data(
@@ -159,6 +160,7 @@ def test_slow_produce_capture(
 ) -> None:
     frame_pool: Optional[FramePool] = create_frame_pool(
         2, short_sample_capture_settings) if use_frame_pool else None
+    frame_pools = {FrameData: frame_pool}
     frame_queue: 'Queue[DataCollection]' = Queue()
     stop_condition: Synchronized[int] = Value('i', 0)  # type: ignore
 
@@ -176,21 +178,26 @@ def test_slow_produce_capture(
     assert not data.has(ExceptionCloseData), data.get(
         ExceptionCloseData).exception
     assert not data.has(FrameData)
-    clear_queue(frame_queue, frame_pool)
+    clear_queue(frame_queue, frame_pools)
 
 
 @pytest.mark.parametrize('use_frame_pool', [False, True])
+@pytest.mark.parametrize('handle_logs', [False, True])
 def test_producer(
     sample_capture_settings: CaptureSettings,
-    use_frame_pool: bool
+    use_frame_pool: bool,
+    handle_logs: bool
 ) -> None:
+    if handle_logs:
+        logger_manager.start()
     frame_pool: Optional[FramePool] = create_frame_pool(
         2, sample_capture_settings) if use_frame_pool else None
+    frame_pools = {FrameData: frame_pool}
     frame_queue: 'Queue[DataCollection]' = Queue()
 
     frame_producer = VideoCaptureProducer(
         frame_queue, sample_capture_settings, frame_pool)
-    frame_producer.start()
+    frame_producer.start(handle_logs)
 
     data: Optional[DataCollection] = None
     found_frame = False
@@ -208,7 +215,9 @@ def test_producer(
         frame_pool.free_frame(data.get(FrameData).frame)
 
     frame_producer.stop()
-    clear_queue(frame_queue, frame_pool)
+    clear_queue(frame_queue, frame_pools)
+    if handle_logs:
+        logger_manager.close()
 
 
 # TODO: check why it fails with not using frame pool (size 0)
@@ -226,6 +235,7 @@ def test_producer_no_frame_skips(
         frame_pool_size,
         sample_capture_settings
     ) if frame_pool_size > 0 else None
+    frame_pools = {FrameData: frame_pool}
     frame_queue: 'Queue[DataCollection]' = Queue(
         max_queue_size) if max_queue_size is not None else Queue()
 
@@ -285,7 +295,7 @@ def test_producer_no_frame_skips(
     assert frame_queue.empty()
 
     frame_producer.stop()
-    clear_queue(frame_queue, frame_pool)
+    clear_queue(frame_queue, frame_pools)
 
 
 def test_producer_no_frame_skips_queue_size_limit_on_close(
@@ -299,6 +309,7 @@ def test_producer_no_frame_skips_queue_size_limit_on_close(
         20,
         sample_capture_settings
     )
+    frame_pools = {FrameData: frame_pool}
 
     frame_queue: 'Queue[DataCollection]' = Queue(max_queue_size)
 
@@ -346,7 +357,7 @@ def test_producer_no_frame_skips_queue_size_limit_on_close(
     assert frame_queue.empty()
 
     frame_producer.stop()
-    clear_queue(frame_queue, frame_pool)
+    clear_queue(frame_queue, frame_pools)
 
 
 def test_producer_early_stop(

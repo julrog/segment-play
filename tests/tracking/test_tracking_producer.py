@@ -99,6 +99,7 @@ def test_produce_tracking_with_video(
 ) -> None:
     frame_pool: Optional[FramePool] = create_frame_pool(
         10, sample_capture_settings) if use_frame_pool else None
+    frame_pools = {FrameData: frame_pool}
     frame_queue: 'Queue[DataCollection]' = Queue()
     tracking_queue: 'Queue[DataCollection]' = Queue()
     ready: Synchronized[int] = Value('i', 0)  # type: ignore
@@ -119,8 +120,8 @@ def test_produce_tracking_with_video(
     assert not data.has(TrackingData)
 
     frame_producer.stop()
-    clear_queue(frame_queue, frame_pool)
-    clear_queue(tracking_queue, frame_pool)
+    clear_queue(frame_queue, frame_pools)
+    clear_queue(tracking_queue, frame_pools)
 
 
 @pytest.mark.parametrize('use_frame_pool', [False, True])
@@ -130,6 +131,7 @@ def test_producer(
 ) -> None:
     frame_pool: Optional[FramePool] = create_frame_pool(
         2, sample_capture_settings) if use_frame_pool else None
+    frame_pools = {FrameData: frame_pool}
     frame_queue: 'Queue[DataCollection]' = Queue()
     tracking_queue: 'Queue[DataCollection]' = Queue()
 
@@ -162,8 +164,8 @@ def test_producer(
 
     frame_producer.stop()
     tracking_producer.join()
-    clear_queue(frame_queue, frame_pool)
-    clear_queue(tracking_queue, frame_pool)
+    clear_queue(frame_queue, frame_pools)
+    clear_queue(tracking_queue, frame_pools)
 
 
 def test_produce_tracking_logs(caplog: pytest.LogCaptureFixture) -> None:

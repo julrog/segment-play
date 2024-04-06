@@ -49,6 +49,7 @@ def main(args: Dict) -> None:
 
     frame_queue: 'Queue[DataCollection]' = Queue()
     frame_pool = create_frame_pool(100, camera_settings)
+    frame_pools = {FrameData: frame_pool}
 
     tracking_queue: 'Queue[DataCollection]' = Queue()
     tracker = TrackProducer(frame_queue, tracking_queue,
@@ -115,8 +116,8 @@ def main(args: Dict) -> None:
 
     cap.stop()
     tracker.join()
-    clear_queue(frame_queue, frame_pool)
-    clear_queue(tracking_queue, frame_pool)
+    clear_queue(frame_queue, frame_pools)
+    clear_queue(tracking_queue, frame_pools)
     frame_pool.close()
     cv2.destroyAllWindows()
     print('Closing')

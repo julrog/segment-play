@@ -49,6 +49,10 @@ class FrameModificationData(BaseData):
         return self.modifications[id].tracking_id
 
 
+class ModifiedFrameData(FrameData):
+    pass
+
+
 def modification_handling(
     setting: GameSettings,
     data: DataCollection

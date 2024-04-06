@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from multiprocessing import Queue
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Type
 
 from frame.producer import FrameData
 from frame.shared import FramePool
@@ -44,30 +44,39 @@ def filter_frames_limit(
 
 def clean_frame(
     input_queue: 'Queue[DataCollection]',
-    frame_pool: FramePool,
+    frame_pools: Dict[Type, FramePool],
     cleanup_delay: float = 0.0,
     limit: int = 20,
 ) -> None:
-    cleanup_list: List[Tuple[int, float]] = []
+    cleanup_list: Dict[Type, List[Tuple[int, float]]] = dict()
+    for data_type, frame_pool in frame_pools.items():
+        cleanup_list[data_type] = []
     try:
         for data in pipeline_data_and_empty_generator(
             input_queue,
             None,
-            [FrameData],
+            [],
             receiver_name='CleanFrame'
         ):
             current_time = time.time()
-            if data and data.get(FrameData).using_shared_pool:
-                cleanup_list.append((data.get(FrameData).frame, current_time))
+            for data_type, frame_pool in frame_pools.items():
+                if data and data.has(data_type):
+                    current_frame_data = data.get(data_type)
+                    assert isinstance(current_frame_data, FrameData)
+                    if current_frame_data.using_shared_pool:
+                        cleanup_list[data_type].append(
+                            (data.get(FrameData).frame, current_time))
 
-            filter_old_frames(current_time, cleanup_list,
-                              frame_pool, cleanup_delay)
-            filter_frames_limit(cleanup_list, frame_pool, limit)
+            for data_type, frame_pool in frame_pools.items():
+                filter_old_frames(current_time, cleanup_list[data_type],
+                                  frame_pool, cleanup_delay)
+                filter_frames_limit(cleanup_list[data_type], frame_pool, limit)
 
     except Exception as e:  # pragma: no cover
         logging.error(f'Frame cleanup exception: {e}')
-    for frame, _ in cleanup_list:
-        frame_pool.free_frame(frame)
+    for data_type, frame_pool in frame_pools.items():
+        for frame, _ in cleanup_list[data_type]:
+            frame_pool.free_frame(frame)
     input_queue.cancel_join_thread()
 
 
@@ -75,16 +84,16 @@ class CleanFrameProducer(Producer):
     def __init__(
         self,
             input_queue: 'Queue[DataCollection]',
-            frame_pool: FramePool,
+            frame_pools: Dict[Type, FramePool],
             cleanup_delay: float = 0.0,
             limit: int = 100,
     ) -> None:
         super().__init__(
             input_queue,
-            frame_pool,
+            frame_pools,
             cleanup_delay,
             limit
         )
 
-    def start(self, handle_logs: bool = True) -> None:
+    def start(self, handle_logs: bool = False) -> None:
         self.base_start(clean_frame, handle_logs)
