@@ -77,7 +77,6 @@ def clean_frame(
     for data_type, frame_pool in frame_pools.items():
         for frame, _ in cleanup_list[data_type]:
             frame_pool.free_frame(frame)
-    input_queue.cancel_join_thread()
 
 
 class CleanFrameProducer(Producer):

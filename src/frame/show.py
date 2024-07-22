@@ -72,9 +72,6 @@ def produce_window(
                     key_queue.put(key)  # pragma: no cover
     except Exception as e:  # pragma: no cover
         logging.error(f'Window producer exception: {e}')
-    input_queue.cancel_join_thread()
-    if output_queue:
-        output_queue.cancel_join_thread()
     key_queue.cancel_join_thread()
     cv2.destroyWindow(WINDOW_NAME)
 

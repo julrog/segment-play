@@ -1,5 +1,5 @@
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import pytest
@@ -85,7 +85,7 @@ def test_scale_mask(scale: float) -> None:
 @pytest.mark.parametrize('gray', [True, False])
 def test_apply_mask(
     mask_shape: Tuple[int, ...],
-    position: Tuple[int, int],
+    position: Optional[Tuple[int, int]],
     gray: bool
 ) -> None:
     width = 100

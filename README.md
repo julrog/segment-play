@@ -18,8 +18,6 @@ pip install -r requirements.txt
 ```
 
 
-
-
 ### Models
 
 Segmentation model for MobileSAM can be downloaded from [here](https://github.com/ChaoningZhang/MobileSAM) or directly [mobile-sam.pt](https://github.com/ChaoningZhang/MobileSAM/blob/master/weights/mobile_sam.pt).

@@ -55,7 +55,6 @@ def fill_queue_delay(
     for frame in frames:
         input_queue.put(DataCollection().add(frame))
     input_queue.put(DataCollection().add(CloseData()))
-    input_queue.cancel_join_thread()
 
 
 def test_produce_window_delayed_input() -> None:

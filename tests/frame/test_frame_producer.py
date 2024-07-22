@@ -71,6 +71,7 @@ def test_free_output_queue(
             assert reduce_frame_discard_timer is None
         # delay necessary, otherwise empty is not up-to-date
         time.sleep(0.001)
+    clear_queue(output_queue)
 
 
 class FrameDataOne(FrameData):
@@ -132,6 +133,7 @@ def test_free_output_queue_frame_pools() -> None:
     frame_pool_three.free_frame(frame_data[2].frame)
 
     assert frame_pool_three.is_empty()
+    clear_queue(output_queue, frame_pools)
 
 
 def slow_consume(

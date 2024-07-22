@@ -82,8 +82,6 @@ def produce_tracking(
             free_output_queue(output_queue, frame_pools)
         output_queue.put(DataCollection().add(
             ExceptionCloseData(e)))
-    output_queue.cancel_join_thread()
-    input_queue.cancel_join_thread()
 
 
 class TrackProducer(Producer):

@@ -90,6 +90,8 @@ def test_produce_tracking(use_frame_pool: bool) -> None:
 
     if frame_pool:
         assert frame_pool.is_empty()
+    clear_queue(input_queue)
+    clear_queue(output_queue)
 
 
 @pytest.mark.parametrize('use_frame_pool', [False, True])
@@ -200,6 +202,8 @@ def test_produce_tracking_logs(caplog: pytest.LogCaptureFixture) -> None:
             assert log_tuple[0] == 'root'
             assert log_tuple[1] == logging.INFO
             assert log_tuple[2].startswith('Tracking-FPS:')
+    clear_queue(input_queue)
+    clear_queue(output_queue)
 
 
 def test_stop_producer() -> None:
@@ -225,6 +229,8 @@ def test_stop_producer_early() -> None:
     out_queue: 'Queue[DataCollection]' = Queue()
     producer = TrackProducer(in_queue, out_queue)
     producer.stop()
+    clear_queue(in_queue)
+    clear_queue(out_queue)
 
 
 def test_join_producer_early() -> None:
@@ -232,3 +238,5 @@ def test_join_producer_early() -> None:
     out_queue: 'Queue[DataCollection]' = Queue()
     producer = TrackProducer(in_queue, out_queue)
     producer.join()
+    clear_queue(in_queue)
+    clear_queue(out_queue)

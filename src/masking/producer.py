@@ -2,7 +2,8 @@
 
 import logging
 import time
-from multiprocessing import Queue
+from multiprocessing import Queue, Value
+from multiprocessing.sharedctypes import Synchronized
 from typing import Dict, Optional, Type
 
 from background import BackgroundHandle
@@ -26,6 +27,7 @@ from util.image import create_black_image
 def produce_masking(
     input_queue: 'Queue[DataCollection]',
     output_queue: 'Queue[DataCollection]',
+    ready: 'Synchronized[int]',
     setting: GameSettings,
     background: BackgroundHandle,
     frame_pool: Optional[FramePool] = None,
@@ -40,6 +42,7 @@ def produce_masking(
         timer = Timer()
         frame_count = 0
         current_bg_id: Optional[int] = None
+        ready.value = 1
 
         for data in pipeline_data_generator(
             input_queue,
@@ -61,8 +64,10 @@ def produce_masking(
                 background_image = background.get_bg()
                 current_bg_id += 1
 
-            new_background = apply_mask(
-                frame, background_image, foreground_mask)
+            new_background = frame
+            if foreground_mask is not None:
+                new_background = apply_mask(
+                    frame, background_image, foreground_mask)
 
             background.add_frame(new_background)
 
@@ -89,8 +94,6 @@ def produce_masking(
             free_output_queue(output_queue, frame_pools)
         output_queue.put(DataCollection().add(
             ExceptionCloseData(e)))
-    output_queue.cancel_join_thread()
-    input_queue.cancel_join_thread()
 
 
 class MaskingProducer(Producer):
@@ -105,9 +108,11 @@ class MaskingProducer(Producer):
             skip_frames: bool = True,
             log_cycles: int = 100,
     ) -> None:
+        self.ready: Synchronized[int] = Value('i', 0)  # type: ignore
         super().__init__(
             input_queue,
             output_queue,
+            self.ready,
             setting,
             background,
             frame_pool,

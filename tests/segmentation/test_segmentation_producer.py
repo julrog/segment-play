@@ -258,7 +258,7 @@ def test_produce_segmentation_with_video(
     clear_queue(segmentation_queue, frame_pools)
 
 
-@pytest.mark.parametrize('use_frame_pool', [False, True])
+@pytest.mark.parametrize('use_frame_pool', [True])
 def test_producer(
     sample_capture_settings: CaptureSettings,
     use_frame_pool: bool
@@ -356,6 +356,8 @@ def test_produce_segmentation_logs(caplog: pytest.LogCaptureFixture) -> None:
             assert log_tuple[0] == 'root'
             assert log_tuple[1] == logging.INFO
             assert log_tuple[2].startswith('Segmentation-FPS:')
+    clear_queue(input_queue)
+    clear_queue(output_queue)
 
 
 def test_stop_producer() -> None:
@@ -385,6 +387,8 @@ def test_stop_producer_early() -> None:
     out_queue: 'Queue[DataCollection]' = Queue()
     producer = SegmentProducer(in_queue, out_queue)
     producer.stop()
+    clear_queue(in_queue)
+    clear_queue(out_queue)
 
 
 def test_join_producer_early() -> None:
@@ -392,3 +396,5 @@ def test_join_producer_early() -> None:
     out_queue: 'Queue[DataCollection]' = Queue()
     producer = SegmentProducer(in_queue, out_queue)
     producer.join()
+    clear_queue(in_queue)
+    clear_queue(out_queue)

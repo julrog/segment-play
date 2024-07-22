@@ -82,6 +82,8 @@ def test_clean_frame() -> None:
     assert input_queue.empty()
     assert frame_pool.is_empty()
 
+    clear_queue(input_queue, {FrameData: frame_pool})
+
 
 def test_clean_frame_early_close() -> None:
     input_queue: 'Queue[DataCollection]' = Queue()
@@ -99,6 +101,8 @@ def test_clean_frame_early_close() -> None:
 
     assert input_queue.empty()
     assert frame_pool.is_empty()
+
+    clear_queue(input_queue, {FrameData: frame_pool})
 
 
 def test_clean_frame_producer(

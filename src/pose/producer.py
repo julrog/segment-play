@@ -124,8 +124,6 @@ def produce_pose(
             ExceptionCloseData(e)))
     if pose:  # pragma: no cover
         pose.close()
-    input_queue.cancel_join_thread()
-    output_queue.cancel_join_thread()
 
 
 class PoseProducer(Producer):

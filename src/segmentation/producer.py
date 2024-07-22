@@ -180,8 +180,6 @@ def produce_segmentation(
             free_output_queue(output_queue, frame_pools)
         output_queue.put(DataCollection().add(
             ExceptionCloseData(e)))
-    input_queue.cancel_join_thread()
-    output_queue.cancel_join_thread()
 
 
 class SegmentProducer(Producer):

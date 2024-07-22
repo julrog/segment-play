@@ -5,6 +5,7 @@ from multiprocessing import Queue
 import pytest
 
 from pipeline.data import BaseData, DataCollection, ExceptionCloseData
+from pipeline.manager import clear_queue
 from pipeline.producer import Producer, interruptible
 from tests.pipeline.test_data import TData, TException
 from util.logging import logger_manager
@@ -22,6 +23,7 @@ def test_interruptible() -> None:
     assert output_queue.qsize() == 2
     assert output_queue.get().has(TData)
     assert output_queue.get().has(ExceptionCloseData)
+    clear_queue(output_queue)
 
 
 class MessageData(BaseData):
@@ -51,6 +53,8 @@ def test_producer(handle_logs: bool) -> None:
     close = queue.get()
     assert isinstance(close, DataCollection)
     assert close.is_closed()
+
+    clear_queue(queue)
 
     if handle_logs:
         logger_manager.close()

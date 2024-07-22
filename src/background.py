@@ -33,9 +33,10 @@ class Background:
                 self.avg = img.astype(np.float32)
         else:
             if self.frame_pool is not None:
+                current_avg = self.frame_pool.get(self.avg)
                 cv2.accumulateWeighted(
                     img.astype(np.float32),
-                    self.frame_pool.get(self.avg),
+                    current_avg,
                     self.new_weight
                 )
             else:
@@ -135,7 +136,6 @@ def handle_background(
                 logging.info(f'Background-FPS: {average_time}')
     except Exception as e:  # pragma: no cover
         logging.error(f'Background exception: {e}')
-    input_queue.cancel_join_thread()
     background.close()
 
 

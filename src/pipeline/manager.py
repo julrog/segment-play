@@ -24,6 +24,7 @@ class FrameProcessingPipeline:
         use_pose: bool = False,
         skip_capture_frames: bool = True
     ) -> None:
+        self.frame_pools = {FrameData: frame_pool}
         self.use_pose = use_pose
 
         self.frame_queue: 'Queue[DataCollection]' = Queue()
@@ -82,6 +83,11 @@ class FrameProcessingPipeline:
             self.pose.join()
         for segment in self.segments:
             segment.stop()
+        clear_queue(self.frame_queue, self.frame_pools)
+        clear_queue(self.tracking_queue, self.frame_pools)
+        if self.use_pose:
+            clear_queue(self.pose_queue, self.frame_pools)
+        clear_queue(self.segment_queue, self.frame_pools)
 
 
 def clear_queue(

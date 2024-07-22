@@ -124,7 +124,6 @@ def produce_capture(
             free_output_queue(output_queue, frame_pools)
         output_queue.put(DataCollection().add(
             ExceptionCloseData(e)))
-    output_queue.cancel_join_thread()
     cap.release()
 
 
